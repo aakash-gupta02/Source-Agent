@@ -1,16 +1,15 @@
-export const databaseSchema = `
-Tables:
+import z from "zod";
 
-users
-- id: integer
-- name: varchar
-- email: varchar
-- created_at: timestamp
+export const SqlResponseSchema = z.object({
+  canAnswer: z.boolean().describe(
+    "Whether the database schema contains enough information to answer the question."
+  ),
 
-orders
-- id: integer
-- user_id: integer → users.id
-- amount: numeric
-- status: varchar
-- created_at: timestamp
-`;
+  sql: z.string().nullable().describe(
+    "A valid PostgreSQL SQL query if the question can be answered, otherwise null."
+  ),
+
+  explanation: z.string().describe(
+    "Briefly explain the generated query or why the question cannot be answered."
+  ),
+});

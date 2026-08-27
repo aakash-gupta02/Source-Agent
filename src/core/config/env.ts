@@ -16,6 +16,8 @@ const envSchema = z.object({
   TAVILY_API_KEY: z.string().min(1, "TAVILY_API_KEY is required"),
   
   GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
+
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 });
 
 const parsed = envSchema.safeParse(process.env);
