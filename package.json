@@ -1,0 +1,48 @@
+{
+  "name": "deep-research",
+  "version": "1.0.0",
+  "description": "Production-grade modular Express REST API starter with TypeScript.",
+  "main": "dist/cli/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/cli/index.ts",
+    "start": "node dist/cli/index.js",
+    "build": "tsc",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "node --test"
+  },
+  "keywords": [
+    "express",
+    "typescript",
+    "rest-api",
+    "jwt",
+    "zod"
+  ],
+  "author": "aakashgupta",
+  "license": "ISC",
+  "dependencies": {
+    "@langchain/core": "^1.2.9",
+    "@langchain/google": "^0.2.3",
+    "@langchain/langgraph": "^1.4.12",
+    "@langchain/ollama": "^1.3.0",
+    "dotenv": "^17.2.3",
+    "winston": "^3.18.3",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^24.5.2",
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
+    "neatnode": "^3.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.0.0"
+  }
+}
