@@ -1,50 +1,20 @@
 import { model } from "../../core/config/model.js";
-import { executeSQL, formatSchema, getSchema } from "./db.service.js";
-import { SqlResponseSchema } from "./schema.js";
+import { executeSQL, getSchema } from "./db.service.js";
 
-const question = "Which user's orders have the highest discount?";
+const modelWithTools = model.bindTools([getSchema, executeSQL]);
 
-const schema = await getSchema();
-const formattedSchema = formatSchema(schema);
+const response = await modelWithTools.invoke(
+  "Which user has spent the most money on completed orders?",
+);
 
-const sqlModel = model.withStructuredOutput(SqlResponseSchema);
+console.dir(response, { depth: null });
 
-const prompt = `
-You are a PostgreSQL SQL generation assistant.
-
-Use only the tables and columns provided in the database schema.
-
-Database schema:
-
-${formattedSchema}
-
-User question:
-
-"${question}"
-
-Determine whether the question can be answered using this schema.
-
-If it can:
-- Generate valid PostgreSQL SQL.
-- Do not invent tables or columns.
-
-If it cannot:
-- Set canAnswer to false.
-- Set sql to null.
-- Explain what required information is missing.
-
-Never put an error message or explanation inside the SQL field.
-`;
-
-const response = await sqlModel.invoke(prompt);
-
-console.log("llm", response);
-
-if (!response.canAnswer || !response.sql) {
-  console.log("Cannot answer the question:", response.explanation);
-  process.exit(0);
+if (!response.tool_calls || response.tool_calls.length === 0) {
+  throw new Error("No tool calls found in the response.");
 }
 
-const executedResult = await executeSQL(response.sql);
+const toolCall = response.tool_calls[0];
 
-console.log("Executed Result:", executedResult);
+const toolResult = await getSchema.invoke(toolCall.args);
+
+console.dir(toolResult, { depth: null });
