@@ -5,26 +5,47 @@ import {
   SystemMessage,
 } from "@langchain/core/messages";
 import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
-import { executeSQL, getSchema } from "./db.service.js";
+import {
+  executeSQL,
+  getColumnValues,
+  getSchema,
+  getTables,
+  getTableSample,
+  getTableSchema,
+} from "./db.service.js";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
-const question = "Which user has placed the most orders?";
+const question = "What are the different values of order status?";
 
-const tools = new ToolNode([getSchema, executeSQL]);
-const modelWithTools = model.bindTools([getSchema, executeSQL]);
+const allTools = [
+  getTables,
+  getTableSchema,
+  getTableSample,
+  getColumnValues,
+  executeSQL,
+];
+
+const tools = new ToolNode(allTools);
+const modelWithTools = model.bindTools(allTools);
 
 const systemPrompt = `
 You are a PostgreSQL database assistant.
 
 Rules:
-- Use get_schema when you need to inspect the database structure.
+- Use get_tables to discover the available database tables.
+- Use get_table_schema to inspect the columns, data types, primary keys, and foreign key relationships of relevant tables.
+- Use get_table_sample after inspecting a relevant table's schema when the user's question requires knowing actual values stored in the database.
+- Use get_column_values when you need to know the distinct values stored in a specific column.
 - Use execute_sql to retrieve data.
-- Only execute read-only SQL queries.
+- Use get_table_sample when you need to understand the actual values or data patterns in a relevant table.
+- Only inspect tables and columns that are available through the database tools.
 - Never invent tables, columns, or relationships.
-- If the schema cannot answer the question, explain why.
+- Use foreign key relationships from get_table_schema when determining how tables should be joined.
+- If the available schema cannot answer the question, explain why.
 - After receiving query results, answer the user's question clearly.
 - If a tool reports DATABASE_UNAVAILABLE, do not call the database tools again. Explain that the database is currently unavailable.
 - If execute_sql returns a SQL error caused by an invalid query, correct the query and retry.
+
 `;
 
 const State = Annotation.Root({
@@ -101,5 +122,50 @@ console.dir(
   { depth: null },
 );
 console.log("Actual response: ", result.messages.at(-1)?.content);
+console.log("modelname: ", result.messages.at(-1)?.response_metadata?.model ?? "");
 
 // console.log(result)
+
+// const questions = [
+//   "Which user has spent the most money on completed orders?",
+//   "Which user has placed the most orders?",
+//   "How many users are in the database?",
+//   "Which users have never placed an order?",
+//   "What is the average amount of completed orders?",
+//   "What are the different values of order status?",
+//   "What are the different order statuses and how many orders have each status?",
+// ];
+
+// const question = questions[2];
+
+// console.log("\n" + "=".repeat(70));
+// console.log(`QUESTION: ${question}`);
+// console.log("=".repeat(70));
+// console.time("Execution Time");
+
+// const result = await graph.invoke({
+//   messages: [new SystemMessage(systemPrompt), new HumanMessage(question)],
+// });
+
+// const lastMessage = result.messages.at(-1);
+
+// const toolCalls = result.messages
+//   .filter((message) => message.type === "ai")
+//   .flatMap(
+//     (message) =>
+//       message.tool_calls?.map((call) => ({
+//         name: call.name,
+//         args: call.args,
+//       })) ?? [],
+//   );
+
+// console.log(
+//   "TOOLS:",
+//   toolCalls
+//     .map((tool) => `${tool.name}(${JSON.stringify(tool.args)})`)
+//     .join(" → "),
+// );
+
+// console.log("ANSWER:", lastMessage?.content);
+// console.log("MODEL:", lastMessage?.response_metadata?.model ?? "unknown");
+// console.timeEnd("Execution Time");
