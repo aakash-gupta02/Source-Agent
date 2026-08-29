@@ -1,14 +1,23 @@
 import { model } from "../../core/config/model.js";
+import { BaseMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 import { executeSQL, getSchema } from "./db.service.js";
-
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
 const tools = new ToolNode([getSchema, executeSQL]);
-
 const modelWithTools = model.bindTools([getSchema, executeSQL]);
 
-import { BaseMessage, HumanMessage } from "@langchain/core/messages";
-import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
+const systemPrompt = `
+You are a PostgreSQL database assistant.
+
+Rules:
+- Use get_schema when you need to inspect the database structure.
+- Use execute_sql to retrieve data.
+- Only execute read-only SQL queries.
+- Never invent tables, columns, or relationships.
+- If the schema cannot answer the question, explain why.
+- After receiving query results, answer the user's question clearly.
+`;
 
 const State = Annotation.Root({
   messages: Annotation<BaseMessage[]>({
@@ -53,10 +62,18 @@ const graph = new StateGraph(State)
 
 const result = await graph.invoke({
   messages: [
+    new SystemMessage(systemPrompt),
     new HumanMessage(
       "Which user has spent the most money on completed orders?",
     ),
   ],
 });
 
-console.dir(result.messages, { depth: null });
+console.dir(
+  result.messages.map((message) => ({
+    type: message.type,
+    content: message.content,
+    toolCalls: message.tool_calls ?? [],
+  })),
+  { depth: null },
+);
