@@ -50,6 +50,76 @@ const validateSQLQuery = (sql: string) => {
   }
 };
 
+const isValidTable = async (table: string) => {
+  const result = await pool.query(
+    `
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND table_name = $1
+      AND table_type = 'BASE TABLE';
+    `,
+    [table],
+  );
+
+  return result.rowCount === 1;
+};
+
+export const getTableSample = tool(
+  async ({ table, limit }) => {
+    try {
+      const valid = await isValidTable(table);
+
+      if (!valid) {
+        return `Invalid table: ${table}`;
+      }
+
+      const result = await pool.query(`SELECT * FROM "${table}" LIMIT $1;`, [
+        limit,
+      ]);
+
+      return JSON.stringify(result.rows);
+    } catch (error) {
+      return `DATABASE_UNAVAILABLE: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+    }
+  },
+  {
+    name: "get_table_sample",
+    description:
+      "Get a small sample of rows from a PostgreSQL table to understand actual data values.",
+    schema: z.object({
+      table: z.string().describe("The name of the table to inspect."),
+      limit: z.number().int().min(1).max(10).default(5),
+    }),
+  },
+);
+
+export const getTables = tool(
+  async () => {
+    try {
+      const result = await pool.query(`
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_type = 'BASE TABLE'
+        ORDER BY table_name;
+      `);
+
+      return result.rows.map((row) => row.table_name).join("\n");
+    } catch (error) {
+      return `DATABASE_UNAVAILABLE: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+    }
+  },
+  {
+    name: "get_tables",
+    description: "Get the names of all tables in the PostgreSQL database.",
+  },
+);
+
 export const getSchema = tool(
   async () => {
     try {
@@ -103,6 +173,125 @@ export const getSchema = tool(
     name: "get_schema",
     description:
       "Get the tables, columns, and data types available in the PostgreSQL database.",
+  },
+);
+
+export const getTableSchema = tool(
+  async ({ tables }) => {
+    try {
+      const columns = await pool.query(
+        `
+        SELECT
+          table_name,
+          column_name,
+          data_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = ANY($1)
+        ORDER BY table_name, ordinal_position;
+        `,
+        [tables],
+      );
+
+      const primaryKeys = await pool.query(
+        `
+        SELECT
+          tc.table_name,
+          kcu.column_name
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.key_column_usage AS kcu
+          ON tc.constraint_name = kcu.constraint_name
+          AND tc.table_schema = kcu.table_schema
+        WHERE tc.constraint_type = 'PRIMARY KEY'
+          AND tc.table_schema = 'public'
+          AND tc.table_name = ANY($1);
+        `,
+        [tables],
+      );
+
+      const foreignKeys = await pool.query(
+        `
+        SELECT
+          tc.table_name,
+          kcu.column_name,
+          ccu.table_name AS foreign_table_name,
+          ccu.column_name AS foreign_column_name
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.key_column_usage AS kcu
+          ON tc.constraint_name = kcu.constraint_name
+          AND tc.table_schema = kcu.table_schema
+        JOIN information_schema.constraint_column_usage AS ccu
+          ON tc.constraint_name = ccu.constraint_name
+          AND tc.table_schema = ccu.table_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_schema = 'public'
+          AND tc.table_name = ANY($1);
+        `,
+        [tables],
+      );
+
+      return formatSchema(columns.rows, primaryKeys.rows, foreignKeys.rows);
+    } catch (error) {
+      return `DATABASE_UNAVAILABLE: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+    }
+  },
+  {
+    name: "get_table_schema",
+    description:
+      "Get a small sample of actual rows from a PostgreSQL table. Use this when the schema alone cannot determine the actual values or patterns in a column, such as status, type, category, role, or other categorical fields.",
+    schema: z.object({
+      tables: z
+        .array(z.string())
+        .min(1)
+        .describe("The names of the tables to inspect."),
+    }),
+  },
+);
+
+export const getColumnValues = tool(
+  async ({ table, column }) => {
+    try {
+      const columnExists = await pool.query(
+        `
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = $1
+          AND column_name = $2;
+        `,
+        [table, column],
+      );
+
+      if (columnExists.rowCount === 0) {
+        return `Invalid table or column: ${table}.${column}`;
+      }
+
+      const result = await pool.query(
+        `
+        SELECT DISTINCT "${column}"
+        FROM "${table}"
+        WHERE "${column}" IS NOT NULL
+        ORDER BY "${column}";
+        `,
+      );
+
+      return JSON.stringify(result.rows);
+    } catch (error) {
+      return `DATABASE_UNAVAILABLE: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+    }
+  },
+  {
+    name: "get_column_values",
+    description:
+      "Get all distinct non-null values from a specific column in a PostgreSQL table. Use this when you need to know the actual values stored in a column, especially categorical fields such as status, type, category, role, or plan.",
+    schema: z.object({
+      table: z.string().describe("The PostgreSQL table name."),
+      column: z.string().describe("The column name to inspect."),
+    }),
   },
 );
 
@@ -188,5 +377,3 @@ export const executeSQL = tool(
     }),
   },
 );
-
-
