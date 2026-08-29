@@ -8,7 +8,7 @@ import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 import { executeSQL, getSchema } from "./db.service.js";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
-const question = "add a new column to the users table named age";
+const question = "Which user has placed the most orders?";
 
 const tools = new ToolNode([getSchema, executeSQL]);
 const modelWithTools = model.bindTools([getSchema, executeSQL]);
