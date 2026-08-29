@@ -1,8 +1,14 @@
 import { model } from "../../core/config/model.js";
-import { BaseMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
+import {
+  BaseMessage,
+  HumanMessage,
+  SystemMessage,
+} from "@langchain/core/messages";
 import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 import { executeSQL, getSchema } from "./db.service.js";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
+
+const question = "Which user received the highest discount?";
 
 const tools = new ToolNode([getSchema, executeSQL]);
 const modelWithTools = model.bindTools([getSchema, executeSQL]);
@@ -61,12 +67,7 @@ const graph = new StateGraph(State)
   .compile();
 
 const result = await graph.invoke({
-  messages: [
-    new SystemMessage(systemPrompt),
-    new HumanMessage(
-      "Which user has spent the most money on completed orders?",
-    ),
-  ],
+  messages: [new SystemMessage(systemPrompt), new HumanMessage(question)],
 });
 
 console.dir(
@@ -77,3 +78,4 @@ console.dir(
   })),
   { depth: null },
 );
+console.log("Actual response: ", result.messages.at(-1)?.content);
