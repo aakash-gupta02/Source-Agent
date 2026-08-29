@@ -8,7 +8,7 @@ import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 import { executeSQL, getSchema } from "./db.service.js";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
-const question = "Which user received the highest discount?";
+const question = "How many users are in the database?";
 
 const tools = new ToolNode([getSchema, executeSQL]);
 const modelWithTools = model.bindTools([getSchema, executeSQL]);
@@ -23,6 +23,8 @@ Rules:
 - Never invent tables, columns, or relationships.
 - If the schema cannot answer the question, explain why.
 - After receiving query results, answer the user's question clearly.
+- If a tool reports DATABASE_UNAVAILABLE, do not call the database tools again. Explain that the database is currently unavailable.
+- If execute_sql returns a SQL error caused by an invalid query, correct the query and retry.
 `;
 
 const State = Annotation.Root({

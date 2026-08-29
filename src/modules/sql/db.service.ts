@@ -9,17 +9,23 @@ const pool = new Pool({
 
 export const getSchema = tool(
   async () => {
-    const result = await pool.query(`
-      SELECT
-        table_name,
-        column_name,
-        data_type
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-      ORDER BY table_name, ordinal_position;
-    `);
+    try {
+      const result = await pool.query(`
+        SELECT
+          table_name,
+          column_name,
+          data_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        ORDER BY table_name, ordinal_position;
+      `);
 
-    return formatSchema(result.rows);
+      return formatSchema(result.rows);
+    } catch (error) {
+      return `DATABASE_UNAVAILABLE: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+    }
   },
   {
     name: "get_schema",
@@ -57,17 +63,23 @@ export const executeSQL = tool(
     const normalized = sql.trim().toLowerCase();
 
     if (!normalized.startsWith("select") && !normalized.startsWith("with")) {
-      throw new Error("Only read-only SELECT queries are allowed.");
+      return "Error: Only read-only SELECT queries are allowed.";
     }
 
-    const result = await pool.query(sql);
+    try {
+      const result = await pool.query(sql);
 
-    return JSON.stringify(result.rows);
+      return JSON.stringify(result.rows);
+    } catch (error) {
+      return `SQL Error: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+    }
   },
   {
     name: "execute_sql",
     description:
-      "Execute a read-only PostgreSQL SQL query and return the resulting rows.",
+      "Execute a read-only PostgreSQL SQL query and return the resulting rows. If execution fails, return the database error so the query can be corrected.",
     schema: z.object({
       sql: z.string().describe("A valid read-only PostgreSQL SQL query."),
     }),
