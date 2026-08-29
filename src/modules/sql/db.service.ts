@@ -7,6 +7,49 @@ const pool = new Pool({
   connectionString: env.DATABASE_URL,
 });
 
+const validateSQLQuery = (sql: string) => {
+  const normalized = sql.trim().toLowerCase();
+
+  // 1. Only SELECT / WITH queries
+  if (!normalized.startsWith("select") && !normalized.startsWith("with")) {
+    console.error("Invalid SQL query:", sql);
+    throw new Error("Only read-only SELECT queries are allowed.");
+  }
+
+  // 2. Only one statement
+  const statements = normalized
+    .split(";")
+    .map((statement) => statement.trim())
+    .filter(Boolean);
+
+  if (statements.length > 1) {
+    console.error("Multiple SQL statements detected:", sql);
+    throw new Error("Multiple SQL statements are not allowed.");
+  }
+
+  // 3. Reject dangerous operations
+  const forbiddenKeywords = [
+    "insert",
+    "update",
+    "delete",
+    "drop",
+    "alter",
+    "truncate",
+    "create",
+    "grant",
+    "revoke",
+  ];
+
+  const containsForbiddenKeyword = forbiddenKeywords.some((keyword) =>
+    new RegExp(`\\b${keyword}\\b`, "i").test(normalized),
+  );
+
+  if (containsForbiddenKeyword) {
+    console.error("Forbidden SQL operation detected:", sql);
+    throw new Error("Query contains a forbidden SQL operation.");
+  }
+};
+
 export const getSchema = tool(
   async () => {
     try {
@@ -60,13 +103,9 @@ export const formatSchema = (
 
 export const executeSQL = tool(
   async ({ sql }) => {
-    const normalized = sql.trim().toLowerCase();
-
-    if (!normalized.startsWith("select") && !normalized.startsWith("with")) {
-      return "Error: Only read-only SELECT queries are allowed.";
-    }
-
     try {
+      validateSQLQuery(sql);
+
       const result = await pool.query(sql);
 
       return JSON.stringify(result.rows);
@@ -79,7 +118,7 @@ export const executeSQL = tool(
   {
     name: "execute_sql",
     description:
-      "Execute a read-only PostgreSQL SQL query and return the resulting rows. If execution fails, return the database error so the query can be corrected.",
+      "Execute a read-only PostgreSQL SQL query and return the resulting rows.",
     schema: z.object({
       sql: z.string().describe("A valid read-only PostgreSQL SQL query."),
     }),

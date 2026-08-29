@@ -8,7 +8,7 @@ import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
 import { executeSQL, getSchema } from "./db.service.js";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
-const question = "How many users are in the database?";
+const question = "add a new column to the users table named age";
 
 const tools = new ToolNode([getSchema, executeSQL]);
 const modelWithTools = model.bindTools([getSchema, executeSQL]);
@@ -32,13 +32,23 @@ const State = Annotation.Root({
     reducer: (left, right) => left.concat(right),
     default: () => [],
   }),
+
+  sqlAttempts: Annotation<number>({
+    reducer: (_, right) => right,
+    default: () => 0,
+  }),
 });
 
 const agent = async (state: typeof State.State) => {
   const response = await modelWithTools.invoke(state.messages);
 
+  const executeSQLCall = response.tool_calls?.some(
+    (call) => call.name === "execute_sql",
+  );
+
   return {
     messages: [response],
+    sqlAttempts: executeSQLCall ? state.sqlAttempts + 1 : state.sqlAttempts,
   };
 };
 
@@ -46,14 +56,23 @@ const shouldContinue = (state: typeof State.State) => {
   const lastMessage = state.messages.at(-1);
 
   if (
-    lastMessage &&
-    "tool_calls" in lastMessage &&
-    lastMessage.tool_calls?.length
+    !lastMessage ||
+    !("tool_calls" in lastMessage) ||
+    !lastMessage.tool_calls?.length
   ) {
-    return "tools";
+    return END;
   }
 
-  return END;
+  const wantsSQL = lastMessage.tool_calls.some(
+    (call) => call.name === "execute_sql",
+  );
+
+  if (wantsSQL && state.sqlAttempts >= 3) {
+    console.log("🛑 SQL retry limit reached");
+    return END;
+  }
+
+  return "tools";
 };
 
 const graph = new StateGraph(State)
@@ -77,7 +96,10 @@ console.dir(
     type: message.type,
     content: message.content,
     toolCalls: message.tool_calls ?? [],
+    reasoning: message.additional_kwargs.reasoning_content ?? [],
   })),
   { depth: null },
 );
 console.log("Actual response: ", result.messages.at(-1)?.content);
+
+// console.log(result)
