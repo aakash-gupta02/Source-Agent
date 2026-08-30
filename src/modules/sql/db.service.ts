@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import { env } from "../../core/config/env.js";
 import { tool } from "@langchain/core/tools";
 import z from "zod";
+import { interrupt } from "@langchain/langgraph";
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
@@ -10,28 +11,18 @@ const pool = new Pool({
 const validateSQLQuery = (sql: string) => {
   const normalized = sql.trim().toLowerCase();
 
-  // 1. Only SELECT / WITH queries
-  if (!normalized.startsWith("select") && !normalized.startsWith("with")) {
-    console.error("Invalid SQL query:", sql);
-    throw new Error("Only read-only SELECT queries are allowed.");
-  }
-
-  // 2. Only one statement
+  // 1. Only one statement
   const statements = normalized
     .split(";")
     .map((statement) => statement.trim())
     .filter(Boolean);
 
   if (statements.length > 1) {
-    console.error("Multiple SQL statements detected:", sql);
     throw new Error("Multiple SQL statements are not allowed.");
   }
 
-  // 3. Reject dangerous operations
+  // 2. Block dangerous DDL / permission operations
   const forbiddenKeywords = [
-    "insert",
-    "update",
-    "delete",
     "drop",
     "alter",
     "truncate",
@@ -45,7 +36,6 @@ const validateSQLQuery = (sql: string) => {
   );
 
   if (containsForbiddenKeyword) {
-    console.error("Forbidden SQL operation detected:", sql);
     throw new Error("Query contains a forbidden SQL operation.");
   }
 };
@@ -356,24 +346,40 @@ export const formatSchema = (
 
 export const executeSQL = tool(
   async ({ sql }) => {
-    try {
-      validateSQLQuery(sql);
+    validateSQLQuery(sql);
 
-      const result = await pool.query(sql);
+    const normalized = sql.trim().toLowerCase();
 
-      return JSON.stringify(result.rows);
-    } catch (error) {
-      return `SQL Error: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
+    const isWrite =
+      normalized.startsWith("insert") ||
+      normalized.startsWith("update") ||
+      normalized.startsWith("delete");
+
+    if (isWrite) {
+
+      console.log("is write hitted");
+      
+
+      const approved = interrupt({
+        type: "sql_approval",
+        sql,
+      });
+
+      if (!approved) {
+        throw new Error("SQL execution rejected by user.");
+      }
     }
+
+    const result = await pool.query(sql);
+
+    return JSON.stringify(result.rows);
   },
   {
     name: "execute_sql",
     description:
-      "Execute a read-only PostgreSQL SQL query and return the resulting rows.",
+      "Execute a PostgreSQL SQL query. Read-only queries execute automatically. Write queries require human approval.",
     schema: z.object({
-      sql: z.string().describe("A valid read-only PostgreSQL SQL query."),
+      sql: z.string().describe("A valid PostgreSQL SQL query."),
     }),
   },
 );

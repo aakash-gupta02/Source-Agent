@@ -10,7 +10,7 @@ const models = {
 } as const;
 
 export const model = new ChatOllama({
-  model: "ministral-3:3b",
+  model: "gemma4:e4b",
   temperature: 0,
 });
 

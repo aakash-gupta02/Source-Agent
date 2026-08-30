@@ -4,7 +4,13 @@ import {
   HumanMessage,
   SystemMessage,
 } from "@langchain/core/messages";
-import { Annotation, END, START, StateGraph } from "@langchain/langgraph";
+import {
+  Annotation,
+  END,
+  MemorySaver,
+  START,
+  StateGraph,
+} from "@langchain/langgraph";
 import {
   executeSQL,
   getColumnValues,
@@ -15,7 +21,7 @@ import {
 } from "./db.service.js";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
-const question = "What are the different values of order status?";
+const question = "delete all records from users table, yes i confirm that i want to delete all records from users table, please proceed with the deletion";
 
 const allTools = [
   getTables,
@@ -36,7 +42,7 @@ Rules:
 - Use get_table_schema to inspect the columns, data types, primary keys, and foreign key relationships of relevant tables.
 - Use get_table_sample after inspecting a relevant table's schema when the user's question requires knowing actual values stored in the database.
 - Use get_column_values when you need to know the distinct values stored in a specific column.
-- Use execute_sql to retrieve data.
+- Use execute_sql to execute SQL queries.
 - Use get_table_sample when you need to understand the actual values or data patterns in a relevant table.
 - Only inspect tables and columns that are available through the database tools.
 - Never invent tables, columns, or relationships.
@@ -45,7 +51,6 @@ Rules:
 - After receiving query results, answer the user's question clearly.
 - If a tool reports DATABASE_UNAVAILABLE, do not call the database tools again. Explain that the database is currently unavailable.
 - If execute_sql returns a SQL error caused by an invalid query, correct the query and retry.
-
 `;
 
 const State = Annotation.Root({
@@ -96,6 +101,8 @@ const shouldContinue = (state: typeof State.State) => {
   return "tools";
 };
 
+const checkpointer = new MemorySaver();
+
 const graph = new StateGraph(State)
   .addNode("agent", agent)
   .addNode("tools", tools)
@@ -106,11 +113,18 @@ const graph = new StateGraph(State)
 
   .addEdge("tools", "agent")
 
-  .compile();
+  .compile({ checkpointer });
 
-const result = await graph.invoke({
-  messages: [new SystemMessage(systemPrompt), new HumanMessage(question)],
-});
+const result = await graph.invoke(
+  {
+    messages: [new SystemMessage(systemPrompt), new HumanMessage(question)],
+  },
+  {
+    configurable: {
+      thread_id: "sql-test-1",
+    },
+  },
+);
 
 console.dir(
   result.messages.map((message) => ({
@@ -122,7 +136,10 @@ console.dir(
   { depth: null },
 );
 console.log("Actual response: ", result.messages.at(-1)?.content);
-console.log("modelname: ", result.messages.at(-1)?.response_metadata?.model ?? "");
+console.log(
+  "modelname: ",
+  result.messages.at(-1)?.response_metadata?.model ?? "",
+);
 
 // console.log(result)
 
