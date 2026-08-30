@@ -117,156 +117,154 @@ const graph = new StateGraph(State)
 
   .addEdge("tools", "agent")
 
-  .compile();
+  .compile({
+    checkpointer,
+  });
 
-// const config = {
-//   configurable: {
-//     thread_id: "sql-test-1",
-//   },
-// };
+import crypto from "node:crypto";
+import readline from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
 
-// const result = await graph.invoke(
-//   {
-//     messages: [
-//       new SystemMessage(systemPrompt),
-//       new HumanMessage(
-//         "get list of users from user tabel ",
-//       ),
-//     ],
-//   },
-//   config,
-// );
-// import readline from "node:readline/promises";
-// import { stdin as input, stdout as output } from "node:process";
+// --------------------------------------------------
+// Run one question
+// --------------------------------------------------
 
-// const rl = readline.createInterface({
-//   input,
-//   output,
-// });
+const runQuestion = async (question: string) => {
+  console.log("\n" + "=".repeat(70));
+  console.log(`QUESTION: ${question}`);
+  console.log("=".repeat(70));
 
-// console.log("\n" + "=".repeat(70));
-// console.log("AGENT INTERRUPTED");
-// console.log("=".repeat(70));
+  const config = {
+    configurable: {
+      // Fresh conversation/execution for every question
+      thread_id: crypto.randomUUID(),
+    },
+  };
 
-// const interrupt = result.__interrupt__?.[0];
+  const result = await graph.invoke(
+    {
+      messages: [new SystemMessage(systemPrompt), new HumanMessage(question)],
+    },
+    config,
+  );
 
-// if (interrupt) {
-//   const { type, sql } = interrupt.value;
+  // ------------------------------------------------
+  // HITL
+  // ------------------------------------------------
 
-//   console.log(`TYPE: ${type}`);
-//   console.log(`SQL:  ${sql}`);
+  const interrupt = result.__interrupt__?.[0];
 
-//   const answer = await rl.question("\nExecute this query? (y/n): ");
+  if (interrupt) {
+    console.log("\n" + "=".repeat(70));
+    console.log("AGENT INTERRUPTED");
+    console.log("=".repeat(70));
 
-//   if (answer.trim().toLowerCase() === "y") {
-//     console.log("\n✅ APPROVED\n");
+    const { type, sql } = interrupt.value;
 
-//     const resumed = await graph.invoke(
-//       new Command({
-//         resume: {
-//           approved: true,
-//         },
-//       }),
-//       config,
-//     );
+    console.log("TYPE:", type);
+    console.log("SQL:", sql);
 
-//     const finalMessage = resumed.messages.at(-1);
+    const rl = readline.createInterface({
+      input,
+      output,
+    });
 
-//     console.log("ANSWER:", finalMessage?.content);
-//   } else {
-//     console.log("\n❌ REJECTED — query was not executed.");
-//     await rl.close();
-//     process.exit(0);
-//   }
-// }
+    const answer = await rl.question("\nExecute this query? (y/n): ");
 
-// rl.close();
+    await rl.close();
 
-// console.log(result)
-
-// const questions = [
-//   "Which user has spent the most money on completed orders?",
-//   "Which user has placed the most orders?",
-//   "How many users are in the database?",
-//   "Which users have never placed an order?",
-//   "What is the average amount of completed orders?",
-//   "What are the different values of order status?",
-//   "What are the different order statuses and how many orders have each status?",
-// ];
-
-// const question = questions[2];
-
-// console.log("\n" + "=".repeat(70));
-// console.log(`QUESTION: ${question}`);
-// console.log("=".repeat(70));
-// console.time("Execution Time");
-
-// const result = await graph.invoke({
-//   messages: [new SystemMessage(systemPrompt), new HumanMessage(question)],
-// });
-
-// const lastMessage = result.messages.at(-1);
-
-// const toolCalls = result.messages
-//   .filter((message) => message.type === "ai")
-//   .flatMap(
-//     (message) =>
-//       message.tool_calls?.map((call) => ({
-//         name: call.name,
-//         args: call.args,
-//       })) ?? [],
-//   );
-
-// console.log(
-//   "TOOLS:",
-//   toolCalls
-//     .map((tool) => `${tool.name}(${JSON.stringify(tool.args)})`)
-//     .join(" → "),
-// );
-
-// console.log("ANSWER:", lastMessage?.content);
-// console.log("MODEL:", lastMessage?.response_metadata?.model ?? "unknown");
-// console.timeEnd("Execution Time");
-
-const result = await graph.invoke({
-  messages: [new SystemMessage(systemPrompt), new HumanMessage(question)],
-});
-
-console.log("\n" + "=".repeat(70));
-console.log("GRAPH TRACE");
-console.log("=".repeat(70));
-
-result.messages.forEach((message, index) => {
-  console.log(`\n--- MESSAGE ${index + 1} ---`);
-  console.log("TYPE:", message.type);
-
-  if (message.content) {
-    console.log("CONTENT:");
-    console.log(message.content);
-  }
-
-  if ("tool_calls" in message && message.tool_calls?.length) {
-    console.log("TOOL CALLS:");
-
-    for (const call of message.tool_calls) {
-      console.log(`  ${call.name}`);
-      console.log("  ARGS:", JSON.stringify(call.args, null, 2));
+    if (answer.trim().toLowerCase() !== "y") {
+      console.log("\n❌ REJECTED — query was not executed.");
+      return;
     }
+
+    console.log("\n✅ APPROVED\n");
+
+    // IMPORTANT:
+    // Same config/thread_id used for the interrupted execution
+    const resumed = await graph.invoke(
+      new Command({
+        resume: {
+          approved: true,
+        },
+      }),
+      config,
+    );
+
+    printResult(resumed);
+
+    return;
   }
 
-  const reasoning = message.additional_kwargs?.reasoning_content;
+  // ------------------------------------------------
+  // Normal query
+  // ------------------------------------------------
 
-  if (reasoning) {
-    console.log("REASONING:");
-    console.log(reasoning);
-  }
-});
+  printResult(result);
+};
 
-console.log("\n" + "=".repeat(70));
-console.log("FINAL ANSWER");
-console.log("=".repeat(70));
+// --------------------------------------------------
+// Result logging
+// --------------------------------------------------
 
-console.log(result.messages.at(-1)?.content);
+const printResult = (result: any) => {
+  console.log("\n" + "=".repeat(70));
+  console.log("GRAPH TRACE");
+  console.log("=".repeat(70));
 
-console.log("\nMODEL:");
-console.log(result.messages.at(-1)?.response_metadata?.model ?? "unknown");
+  result.messages.forEach((message: any, index: number) => {
+    console.log(`\n--- MESSAGE ${index + 1} ---`);
+    console.log("TYPE:", message.type);
+
+    if (message.content) {
+      console.log("CONTENT:");
+      console.log(message.content);
+    }
+
+    if (message.tool_calls?.length) {
+      console.log("TOOL CALLS:");
+
+      for (const call of message.tool_calls) {
+        console.log(`  ${call.name}`);
+        console.log("  ARGS:", JSON.stringify(call.args, null, 2));
+      }
+    }
+
+    const reasoning = message.additional_kwargs?.reasoning_content;
+
+    if (reasoning) {
+      console.log("REASONING:");
+      console.log(reasoning);
+    }
+  });
+
+  const finalMessage = result.messages.at(-1);
+
+  console.log("\n" + "=".repeat(70));
+  console.log("FINAL ANSWER");
+  console.log("=".repeat(70));
+
+  console.log(finalMessage?.content ?? "(no response)");
+
+  console.log("\nMODEL:");
+  console.log(finalMessage?.response_metadata?.model ?? "unknown");
+};
+
+// --------------------------------------------------
+// Questions
+// --------------------------------------------------
+
+const questions = [
+  "Which user has spent the most money on completed orders?",
+  "Which user has placed the most orders?",
+  "How many users are in the database?",
+  "Which users have never placed an order?",
+  "What is the average amount of completed orders?",
+  "What are the different values of order status?",
+  "What are the different order statuses and how many orders have each status?",
+  "List all users from the users table",
+  "Update Aakash's email to aakash@example.com",
+];
+
+// Pick one question for now
+await runQuestion(questions[8]);
