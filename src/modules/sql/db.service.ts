@@ -356,23 +356,35 @@ export const executeSQL = tool(
       normalized.startsWith("delete");
 
     if (isWrite) {
-
       console.log("is write hitted");
-      
 
       const approved = interrupt({
         type: "sql_approval",
         sql,
       });
 
-      if (!approved) {
-        throw new Error("SQL execution rejected by user.");
+      console.log("APPROVAL RESULT:", approved);
+
+      if (!approved?.approved) {
+        return "SQL execution rejected by user.";
       }
     }
 
     const result = await pool.query(sql);
 
+    const MAX_ROWS = 3;
+
+    if (result.rows.length > MAX_ROWS) {
+      console.log("Max length hitted");
+      
+      return JSON.stringify({
+        error: "RESULT_TOO_LARGE",
+        message: `Query returned more than ${MAX_ROWS} rows. Please narrow the query.`,
+      });
+    }
+
     return JSON.stringify(result.rows);
+
   },
   {
     name: "execute_sql",
