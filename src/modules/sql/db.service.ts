@@ -3,7 +3,7 @@ import { env } from "../../core/config/env.js";
 import { tool } from "@langchain/core/tools";
 import z from "zod";
 import { interrupt } from "@langchain/langgraph";
-import { ToolError } from "./schema.js";
+import { ToolError, ToolResponse } from "./schema.js";
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
@@ -77,7 +77,13 @@ export const getTableSample = tool(
         limit,
       ]);
 
-      return JSON.stringify(result.rows);
+      const response: ToolResponse = {
+        status: "success",
+        rowCount: result.rows.length,
+        data: result.rows,
+      };
+
+      return JSON.stringify(response);
     } catch (error) {
       const errormsg: ToolError = {
         status: "error",
@@ -111,7 +117,13 @@ export const getTables = tool(
         ORDER BY table_name;
       `);
 
-      return result.rows.map((row) => row.table_name).join("\n");
+      const response: ToolResponse = {
+        status: "success",
+        rowCount: result.rows.length,
+        data: result.rows,
+      };
+
+      return JSON.stringify(response);
     } catch (error) {
       return `DATABASE_UNAVAILABLE: ${
         error instanceof Error ? error.message : String(error)
@@ -166,7 +178,21 @@ export const getSchema = tool(
     AND tc.table_schema = 'public';
 `);
 
-      return formatSchema(result.rows, primaryKeys.rows, foreignKeys.rows);
+      const response: ToolResponse = {
+        status: "success",
+        rowCount: result.rows.length,
+        data: [
+          {
+            schema: formatSchema(
+              result.rows,
+              primaryKeys.rows,
+              foreignKeys.rows,
+            ),
+          },
+        ],
+      };
+
+      return JSON.stringify(response);
     } catch (error) {
       const errormsg: ToolError = {
         status: "error",
@@ -239,7 +265,21 @@ export const getTableSchema = tool(
         [tables],
       );
 
-      return formatSchema(columns.rows, primaryKeys.rows, foreignKeys.rows);
+      const response: ToolResponse = {
+        status: "success",
+        rowCount: columns.rows.length,
+        data: [
+          {
+            schema: formatSchema(
+              columns.rows,
+              primaryKeys.rows,
+              foreignKeys.rows,
+            ),
+          },
+        ],
+      };
+
+      return JSON.stringify(response);
     } catch (error) {
       const errormsg: ToolError = {
         status: "error",
@@ -291,7 +331,13 @@ export const getColumnValues = tool(
         `,
       );
 
-      return JSON.stringify(result.rows);
+      const response: ToolResponse = {
+        status: "success",
+        rowCount: result.rows.length,
+        data: result.rows,
+      };
+
+      return JSON.stringify(response);
     } catch (error) {
       const errormsg: ToolError = {
         status: "error",
@@ -423,7 +469,13 @@ export const executeSQL = tool(
         return JSON.stringify(error);
       }
 
-      return JSON.stringify(result.rows);
+      const response: ToolResponse = {
+        status: "success",
+        rowCount: result.rows.length,
+        data: result.rows,
+      };
+
+      return JSON.stringify(response);
     } catch (error) {
       const errormsg: ToolError = {
         status: "error",
