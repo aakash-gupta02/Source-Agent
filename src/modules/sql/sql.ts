@@ -22,8 +22,6 @@ import {
 } from "./db.service.js";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
-const question = "list all users from user table";
-
 const allTools = [
   getTables,
   getTableSchema,
@@ -50,10 +48,14 @@ Rules:
 - Use foreign key relationships from get_table_schema when determining how tables should be joined.
 - If the available schema cannot answer the question, explain why.
 - After receiving query results, answer the user's question clearly.
-- If a tool reports DATABASE_UNAVAILABLE, do not call the database tools again. Explain that the database is currently unavailable.
-- If execute_sql returns a SQL error caused by an invalid query, correct the query and retry.
-- If execute_sql returns RESULT_TOO_LARGE, do not retry the same query or use another tool to retrieve the complete result.
-- If the user asked for all records, explain that the result is too large and ask them to narrow the request.
+
+Error handling:
+- Tool errors may contain: status, code, message, and nextStep.
+- Follow the nextStep provided by a tool error when deciding what to do next.
+- If DATABASE_UNAVAILABLE, do not call database tools again. Explain that the database is unavailable.
+- If INVALID_SQL, correct the SQL and retry when possible.
+- If RESULT_TOO_LARGE, do not retry the same query or use another tool to retrieve the complete result. Ask the user to narrow the request.
+- If USER_REJECTED, do not retry the rejected write operation. Tell the user that the operation was cancelled.
 - get_table_sample may be used only when a sample is appropriate, not as a replacement for the requested complete result.
 `;
 
@@ -267,4 +269,4 @@ const questions = [
 ];
 
 // Pick one question for now
-await runQuestion(questions[8]);
+await runQuestion(questions[3]);

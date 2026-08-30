@@ -3,6 +3,7 @@ import { env } from "../../core/config/env.js";
 import { tool } from "@langchain/core/tools";
 import z from "zod";
 import { interrupt } from "@langchain/langgraph";
+import { ToolError } from "./schema.js";
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
@@ -36,7 +37,15 @@ const validateSQLQuery = (sql: string) => {
   );
 
   if (containsForbiddenKeyword) {
-    throw new Error("Query contains a forbidden SQL operation.");
+    const error: ToolError = {
+      status: "error",
+      code: "INVALID_SQL",
+      message: `The SQL query contains a forbidden operation. Only SELECT, INSERT, UPDATE, and DELETE statements are allowed.`,
+      nextStep:
+        "Please modify your SQL query to remove any forbidden operations.",
+    };
+
+    return JSON.stringify(error);
   }
 };
 
@@ -70,9 +79,14 @@ export const getTableSample = tool(
 
       return JSON.stringify(result.rows);
     } catch (error) {
-      return `DATABASE_UNAVAILABLE: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
+      const errormsg: ToolError = {
+        status: "error",
+        code: "DATABASE_UNAVAILABLE",
+        message: error instanceof Error ? error.message : String(error),
+        nextStep:
+          "Please check the database connection and ensure the table exists.",
+      };
+      return JSON.stringify(errormsg);
     }
   },
   {
@@ -154,9 +168,14 @@ export const getSchema = tool(
 
       return formatSchema(result.rows, primaryKeys.rows, foreignKeys.rows);
     } catch (error) {
-      return `DATABASE_UNAVAILABLE: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
+      const errormsg: ToolError = {
+        status: "error",
+        code: "DATABASE_UNAVAILABLE",
+        message: error instanceof Error ? error.message : String(error),
+        nextStep:
+          "Please check the database connection and ensure the table exists.",
+      };
+      return JSON.stringify(errormsg);
     }
   },
   {
@@ -222,9 +241,14 @@ export const getTableSchema = tool(
 
       return formatSchema(columns.rows, primaryKeys.rows, foreignKeys.rows);
     } catch (error) {
-      return `DATABASE_UNAVAILABLE: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
+      const errormsg: ToolError = {
+        status: "error",
+        code: "DATABASE_UNAVAILABLE",
+        message: error instanceof Error ? error.message : String(error),
+        nextStep:
+          "Please check the database connection and ensure the table exists.",
+      };
+      return JSON.stringify(errormsg);
     }
   },
   {
@@ -269,9 +293,14 @@ export const getColumnValues = tool(
 
       return JSON.stringify(result.rows);
     } catch (error) {
-      return `DATABASE_UNAVAILABLE: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
+      const errormsg: ToolError = {
+        status: "error",
+        code: "DATABASE_UNAVAILABLE",
+        message: error instanceof Error ? error.message : String(error),
+        nextStep:
+          "Please check the database connection and ensure the table exists.",
+      };
+      return JSON.stringify(errormsg);
     }
   },
   {
@@ -366,25 +395,46 @@ export const executeSQL = tool(
       console.log("APPROVAL RESULT:", approved);
 
       if (!approved?.approved) {
-        return "SQL execution rejected by user.";
+        const error: ToolError = {
+          status: "error",
+          code: "USER_REJECTED_QUERY",
+          message: "Write query was rejected by the user.",
+          nextStep:
+            "Stop execution and tell the user that the write operation was rejected.",
+        };
+
+        return JSON.stringify(error);
       }
     }
 
-    const result = await pool.query(sql);
+    try {
+      const result = await pool.query(sql);
 
-    const MAX_ROWS = 3;
+      const MAX_ROWS = 3;
 
-    if (result.rows.length > MAX_ROWS) {
-      console.log("Max length hitted");
-      
-      return JSON.stringify({
-        error: "RESULT_TOO_LARGE",
-        message: `Query returned more than ${MAX_ROWS} rows. Please narrow the query.`,
-      });
+      if (result.rows.length > MAX_ROWS) {
+        const error: ToolError = {
+          status: "error",
+          code: "RESULT_TOO_LARGE",
+          message: `Query returned more than ${MAX_ROWS} rows.`,
+          nextStep: "Ask the user to narrow the query or add filters/limits.",
+        };
+
+        return JSON.stringify(error);
+      }
+
+      return JSON.stringify(result.rows);
+    } catch (error) {
+      const errormsg: ToolError = {
+        status: "error",
+        code: "DATABASE_UNAVAILABLE",
+        message: error instanceof Error ? error.message : String(error),
+        nextStep:
+          "Check the database error and correct the SQL query if necessary.",
+      };
+
+      return JSON.stringify(errormsg);
     }
-
-    return JSON.stringify(result.rows);
-
   },
   {
     name: "execute_sql",
