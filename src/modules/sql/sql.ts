@@ -6,6 +6,7 @@ import {
 } from "@langchain/core/messages";
 import {
   Annotation,
+  Command,
   END,
   MemorySaver,
   START,
@@ -21,7 +22,8 @@ import {
 } from "./db.service.js";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
-const question = "delete all records from users table, yes i confirm that i want to delete all records from users table, please proceed with the deletion";
+const question =
+  "delete all records from users table, yes i confirm that i want to delete all records from users table, please proceed with the deletion";
 
 const allTools = [
   getTables,
@@ -115,31 +117,32 @@ const graph = new StateGraph(State)
 
   .compile({ checkpointer });
 
+const config = {
+  configurable: {
+    thread_id: "sql-test-1",
+  },
+};
+
 const result = await graph.invoke(
   {
-    messages: [new SystemMessage(systemPrompt), new HumanMessage(question)],
+    messages: [
+      new SystemMessage(systemPrompt),
+      new HumanMessage("Update Aakash's email to aakash@gmail.com, yes i confirm"),
+    ],
   },
-  {
-    configurable: {
-      thread_id: "sql-test-1",
-    },
-  },
+  config,
 );
 
-console.dir(
-  result.messages.map((message) => ({
-    type: message.type,
-    content: message.content,
-    toolCalls: message.tool_calls ?? [],
-    reasoning: message.additional_kwargs.reasoning_content ?? [],
-  })),
-  { depth: null },
+console.log("INTERRUPTED:", result.__interrupt__);
+
+const resumed = await graph.invoke(
+  new Command({
+    resume: true,
+  }),
+  config,
 );
-console.log("Actual response: ", result.messages.at(-1)?.content);
-console.log(
-  "modelname: ",
-  result.messages.at(-1)?.response_metadata?.model ?? "",
-);
+
+console.dir(resumed, { depth: null });
 
 // console.log(result)
 
