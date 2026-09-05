@@ -1,0 +1,19 @@
+{
+  "name": "sql-agent",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "dev:backend": "turbo run dev --filter=backend",
+    "dev:frontend": "turbo run dev --filter=frontend"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "turbo": "^2.10.8"
+  },
+  "packageManager": "npm@11.13.0"
+}
