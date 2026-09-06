@@ -14,10 +14,8 @@ import { clearCookie, setCookie } from "../../shared/utils/SetCookie.js";
 import { generateGoogleAuthUrl } from "../../shared/utils/Google.js";
 import {
   GoogleAuthInput,
-  GoogleLoginQueryInput,
 } from "@repo/shared/validations";
 import { googleCallbackService } from "./google-auth.service.js";
-import { REGISTERABLE_ROLES, RegisterableRole } from "@repo/shared/types";
 
 const fifteenMinutes = 15 * 60 * 1000;
 const sevenDays = 7 * 24 * 60 * 60 * 1000;
@@ -72,11 +70,9 @@ export const refreshToken = CatchAsync(async (req: Request, res: Response) => {
 
 // Google OAuth login
 export const googleLogin = CatchAsync(async (req: Request, res: Response) => {
-  const { role } = req.query as unknown as GoogleLoginQueryInput;
   const { state, url } = generateGoogleAuthUrl();
 
   setCookie(res, "oauth_state", state);
-  if (role) setCookie(res, "oauth_role", role);
 
   return res.redirect(url);
 });
@@ -85,14 +81,9 @@ export const googleCallback = CatchAsync(
   async (req: Request, res: Response) => {
     const { code, state } = req.query as unknown as GoogleAuthInput;
     const storedState: string = req.cookies.oauth_state;
-    const role = req.cookies.oauth_role;
-
-    const storedRole = REGISTERABLE_ROLES.includes(role as RegisterableRole)
-      ? (role as RegisterableRole)
-      : undefined;
 
     const { accessToken, refreshToken, redirectUrl } =
-      await googleCallbackService(code, state, storedState, storedRole);
+      await googleCallbackService(code, state, storedState);
 
     // Set the access and refresh tokens in cookies
     setCookie(res, "accessToken", accessToken, { maxAge: fifteenMinutes });

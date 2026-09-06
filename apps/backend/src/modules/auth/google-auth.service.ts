@@ -10,7 +10,6 @@ import { db } from "@repo/db/client";
 import { AuthProvider, Prisma } from "@repo/db";
 import { env } from "../../core/config/env.js";
 import { OAuth2Client } from "google-auth-library";
-import { RegisterableRole } from "@repo/shared/types";
 
 const client = new OAuth2Client(
   env.GOOGLE_CLIENT_ID,
@@ -39,6 +38,7 @@ const getGoogleUserInfo = async (code: string) => {
     picture: payload.picture,
     sub: payload.sub,
     isEmailVerified: payload.email_verified || false,
+    name: payload.name || "unknown",
   };
 };
 
@@ -46,14 +46,12 @@ export const googleCallbackService = async (
   code: string,
   state: string,
   storedState: string,
-  storedRole?: RegisterableRole | undefined,
 ) => {
   if (state !== storedState) {
     throw new ApiError(StatusCodes.UNAUTHORIZED, "Invalid state parameter");
   }
 
-  const { email, picture, sub, isEmailVerified } =
-    await getGoogleUserInfo(code);
+  const { email, sub, name } = await getGoogleUserInfo(code);
 
   let user = await User.findFirst({
     where: {
@@ -63,21 +61,12 @@ export const googleCallbackService = async (
   });
 
   if (!user) {
-    if (!storedRole) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        "Role is required for new users",
-      );
-    }
-
     user = await User.create({
       data: {
         email,
-        avatarUrl: picture,
+        name,
         provider: AuthProvider.GOOGLE,
         providerId: sub,
-        isEmailVerified,
-        role: storedRole,
       },
     });
   }
@@ -105,14 +94,6 @@ export const googleCallbackService = async (
   if (!user.providerId) {
     updateData.provider = AuthProvider.GOOGLE;
     updateData.providerId = sub;
-  }
-
-  if (!user.avatarUrl && picture) {
-    updateData.avatarUrl = picture;
-  }
-
-  if (!user.isEmailVerified && isEmailVerified) {
-    updateData.isEmailVerified = true;
   }
 
   await User.update({
