@@ -70,6 +70,7 @@ export const refreshToken = CatchAsync(async (req: Request, res: Response) => {
   sendResponse(res, StatusCodes.OK, "Access token refreshed");
 });
 
+// Google OAuth login
 export const googleLogin = CatchAsync(async (req: Request, res: Response) => {
   const { role } = req.query as unknown as GoogleLoginQueryInput;
   const { state, url } = generateGoogleAuthUrl();
@@ -93,7 +94,7 @@ export const googleCallback = CatchAsync(
     const { accessToken, refreshToken, redirectUrl } =
       await googleCallbackService(code, state, storedState, storedRole);
 
-      // Set the access and refresh tokens in cookies
+    // Set the access and refresh tokens in cookies
     setCookie(res, "accessToken", accessToken, { maxAge: fifteenMinutes });
     setCookie(res, "refreshToken", refreshToken, { maxAge: sevenDays });
 

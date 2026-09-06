@@ -2,18 +2,25 @@ import { z } from "zod";
 import { UserRole } from "@repo/db/enums";
 import { REGISTERABLE_ROLES } from "../types/auth.type.js";
 
+const authFields = {
+  name: z.string().trim().min(2).max(50),
+  email: z.email().transform((val) => val.toLowerCase()),
+  password: z.string().min(6).max(100),
+};
+
 export const registerSchema = z
   .object({
-    email: z.email().transform((val) => val.toLowerCase()),
-    password: z.string().min(6).max(100),
-    role: z.enum(REGISTERABLE_ROLES).default(UserRole.INFLUENCER),
+    name: authFields.name,
+    email: authFields.email,
+    password: authFields.password,
+    role: z.enum(REGISTERABLE_ROLES).default(UserRole.USER),
   })
   .strict();
 
 export const loginSchema = z
   .object({
-    email: z.email().transform((val) => val.toLowerCase()),
-    password: z.string().min(6).max(100),
+    email: authFields.email,
+    password: authFields.password,
   })
   .strict();
 

@@ -8,9 +8,6 @@ export interface AuthResponseDto {
   refreshToken: string;
   user: AuthUserDto;
 }
-export const REGISTERABLE_ROLES = [
-  UserRole.INFLUENCER,
-  UserRole.BRAND,
-] as const;
+export const REGISTERABLE_ROLES = [UserRole.USER] as const;
 
 export type RegisterableRole = (typeof REGISTERABLE_ROLES)[number];
