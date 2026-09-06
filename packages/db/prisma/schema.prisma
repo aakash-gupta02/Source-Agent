@@ -24,8 +24,9 @@ enum AuthProvider {
 //#region Models
 model User {
   id        String  @id @default(uuid())
+
+  name      String
   email     String  @unique
-  avatarUrl String?
 
   role UserRole @default(USER)
 
@@ -34,9 +35,6 @@ model User {
 
   password     String?
   refreshToken String?
-
-  isActive        Boolean @default(true)
-  isEmailVerified Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
