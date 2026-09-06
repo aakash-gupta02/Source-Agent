@@ -7,7 +7,7 @@ datasource db {
   provider = "postgresql"
 }
 
-//#region Enums 
+//#region Enums
 enum UserRole {
   ADMIN
   USER
@@ -19,16 +19,37 @@ enum AuthProvider {
   GITHUB
 }
 
+enum DatabaseType {
+  POSTGRESQL
+}
+
+enum DatabaseConnectionType {
+  URL
+  FIELDS
+}
+
+enum AIProviderType {
+  GOOGLE
+  OPENAI
+  ANTHROPIC
+  OLLAMA
+  MISTARAL
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
 //#endregion
 
 //#region Models
+
 model User {
-  id        String  @id @default(uuid())
-
-  name      String
-  email     String  @unique
-
-  role UserRole @default(USER)
+  id    String   @id @default(uuid())
+  name  String
+  email String   @unique
+  role  UserRole @default(USER)
 
   provider   AuthProvider
   providerId String?      @unique
@@ -38,6 +59,92 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  databaseConnections DatabaseConnection[]
+  aiProviders         AIProvider[]
+  conversations       Conversation[]
 }
 
-//#endregion 
+model DatabaseConnection {
+  id     String @id @default(uuid())
+  userId String
+
+  name String
+
+  type           DatabaseType           @default(POSTGRESQL)
+  connectionType DatabaseConnectionType
+
+  credentials String
+  keyVersion  String
+
+  ssl Boolean @default(true)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  @@index([userId])
+}
+
+model AIProvider {
+  id     String @id @default(uuid())
+  userId String
+
+  name     String
+  provider AIProviderType
+
+  apiKey String
+  model  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
+
+  isActive Boolean @default(true)
+
+  @@index([userId])
+}
+
+model Conversation {
+  id     String @id @default(uuid())
+  userId String
+
+  databaseConnectionId String
+  aiProviderId         String
+
+  title String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  databaseConnection DatabaseConnection @relation(fields: [databaseConnectionId], references: [id], onDelete: Restrict)
+  aiProvider         AIProvider         @relation(fields: [aiProviderId], references: [id], onDelete: Restrict)
+
+  messages Message[]
+
+  @@index([userId])
+  @@index([databaseConnectionId])
+  @@index([aiProviderId])
+}
+
+model Message {
+  id             String @id @default(uuid())
+  conversationId String
+
+  role    MessageRole
+  content String
+
+  createdAt DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+//#endregion
