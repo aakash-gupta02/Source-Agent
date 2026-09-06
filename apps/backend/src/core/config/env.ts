@@ -26,6 +26,10 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1, "GOOGLE_CLIENT_SECRET is required"),
   GOOGLE_CLIENT_ID: z.string().min(1, "GOOGLE_CLIENT_ID is required"),
   GOOGLE_REDIRECT_URI: z.string().min(1, "GOOGLE_REDIRECT_URI is required"),
+
+  // Encryption
+  CURRENT_KEY_VERSION: z.string().min(1, "CURRENT_KEY_VERSION is required"),
+  KEY_v1: z.string().min(1, "KEY_v1 is required"),
 });
 
 const parsed = envSchema.safeParse(process.env);
