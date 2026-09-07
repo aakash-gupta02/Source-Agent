@@ -1,107 +1,63 @@
 import { DatabaseConnectionType } from "@repo/db/enums";
 import { z } from "zod";
+import { atLeastOneField } from "./helpers/atLeastOneField.js";
 
-export const databaseConnectionFields = {
+const databaseConnection = {
   name: z.string().trim().min(1).max(100),
-
   connectionType: z.enum(DatabaseConnectionType),
-
-  url: z.string().url().optional(),
-
-  host: z.string().trim().min(1).optional(),
-
-  port: z.coerce.number().int().min(1).max(65535).optional(),
-
-  database: z.string().trim().min(1).optional(),
-
-  username: z.string().trim().min(1).optional(),
-
-  password: z.string().min(1).optional(),
-
+  url: z.string().url(),
+  host: z.string().trim().min(1),
+  port: z.coerce.number().int().min(1).max(65535),
+  database: z.string().trim().min(1),
+  username: z.string().trim().min(1),
+  password: z.string().min(1),
   ssl: z.boolean().default(true),
+  isActive: z.boolean().default(true),
 };
 
-const urlConnectionSchema = z.object({
-  name: databaseConnectionFields.name,
+const urlConnectionSchema = z
+  .object({
+    name: databaseConnection.name,
+    connectionType: z.literal(DatabaseConnectionType.URL),
+    url: databaseConnection.url,
+    ssl: databaseConnection.ssl,
+  })
+  .strict();
 
-  connectionType: z.literal("URL"),
-
-  url: z.string().url(),
-
-  ssl: databaseConnectionFields.ssl,
-});
-
-const fieldsConnectionSchema = z.object({
-  name: databaseConnectionFields.name,
-
-  connectionType: z.literal("FIELDS"),
-
-  host: databaseConnectionFields.host.unwrap(),
-  port: databaseConnectionFields.port.unwrap(),
-  database: databaseConnectionFields.database.unwrap(),
-  username: databaseConnectionFields.username.unwrap(),
-  password: databaseConnectionFields.password.unwrap(),
-
-  ssl: databaseConnectionFields.ssl,
-});
+const fieldsConnectionSchema = z
+  .object({
+    name: databaseConnection.name,
+    connectionType: z.literal(DatabaseConnectionType.FIELDS),
+    host: databaseConnection.host,
+    port: databaseConnection.port,
+    database: databaseConnection.database,
+    username: databaseConnection.username,
+    password: databaseConnection.password,
+    ssl: databaseConnection.ssl,
+  })
+  .strict();
 
 export const createDatabaseConnectionSchema = z.discriminatedUnion(
   "connectionType",
   [urlConnectionSchema, fieldsConnectionSchema],
 );
 
-const updateDatabaseConnectionFields = {
-  name: z.string().trim().min(1).max(100).optional(),
-  connectionType: z.enum(["URL", "FIELDS"]).optional(),
+export const updateDatabaseConnectionSchema = atLeastOneField(
+  z
+    .object({
+      name: databaseConnection.name.optional(),
+      connectionType: databaseConnection.connectionType.optional(),
+      url: databaseConnection.url.optional(),
+      host: databaseConnection.host.optional(),
+      port: databaseConnection.port.optional(),
+      database: databaseConnection.database.optional(),
+      username: databaseConnection.username.optional(),
+      password: databaseConnection.password.optional(),
+      ssl: databaseConnection.ssl.optional(),
+      isActive: databaseConnection.isActive.optional(),
+    })
+    .strict(),
+);
 
-  url: z.string().url().optional(),
-
-  host: z.string().trim().min(1).optional(),
-  port: z.coerce.number().int().min(1).max(65535).optional(),
-  database: z.string().trim().min(1).optional(),
-  username: z.string().trim().min(1).optional(),
-  password: z.string().min(1).optional(),
-
-  ssl: z.boolean().optional(),
-  isActive: z.boolean().optional(),
-};
-
-export const updateDatabaseConnectionSchema = z
-  .object(updateDatabaseConnectionFields)
-  .strict()
-  .superRefine((data, ctx) => {
-    // If connectionType isn't changing, service can retain the existing type.
-    // Validation of credential fields happens only when changing/providing
-    // connection credentials.
-    if (data.connectionType === "URL") {
-      if (!data.url) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["url"],
-          message: "Connection URL is required when using URL connection.",
-        });
-      }
-
-      const fields = ["host", "port", "database", "username", "password"] as const;
-
-      for (const field of fields) {
-        if (data[field] !== undefined) {
-          ctx.addIssue({
-            code: "custom",
-            path: [field],
-            message: `${field} cannot be provided for a URL connection.`,
-          });
-        }
-      }
-    }
-
-    if (data.connectionType === "FIELDS") {
-      if (data.url !== undefined) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["url"],
-          message: "URL cannot be provided for a field-based connection.",
-        });
-      }
-    }
-  });
+export type CreateDatabaseConnectionInput = z.infer<typeof createDatabaseConnectionSchema>;
+export type UpdateDatabaseConnectionInput = z.infer<typeof updateDatabaseConnectionSchema>;
