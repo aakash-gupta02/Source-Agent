@@ -1,6 +1,7 @@
 import { DatabaseConnectionType } from "@repo/db/enums";
 import { z } from "zod";
 import { atLeastOneField } from "./helpers/atLeastOneField.js";
+import { idParamsSchema } from "./common/IdParams.js";
 
 const databaseConnection = {
   name: z.string().trim().min(1).max(100),
@@ -11,8 +12,8 @@ const databaseConnection = {
   database: z.string().trim().min(1),
   username: z.string().trim().min(1),
   password: z.string().min(1),
-  ssl: z.boolean().default(true),
-  isActive: z.boolean().default(true),
+  ssl: z.boolean(),
+  isActive: z.boolean(),
 };
 
 const urlConnectionSchema = z
@@ -46,18 +47,23 @@ export const updateDatabaseConnectionSchema = atLeastOneField(
   z
     .object({
       name: databaseConnection.name.optional(),
-      connectionType: databaseConnection.connectionType.optional(),
+
       url: databaseConnection.url.optional(),
+
       host: databaseConnection.host.optional(),
       port: databaseConnection.port.optional(),
       database: databaseConnection.database.optional(),
       username: databaseConnection.username.optional(),
       password: databaseConnection.password.optional(),
+      
       ssl: databaseConnection.ssl.optional(),
       isActive: databaseConnection.isActive.optional(),
     })
     .strict(),
 );
 
+export const DBConnectionIdParamsSchema = idParamsSchema
+
 export type CreateDatabaseConnectionInput = z.infer<typeof createDatabaseConnectionSchema>;
 export type UpdateDatabaseConnectionInput = z.infer<typeof updateDatabaseConnectionSchema>;
+export type DBConnectionIdParamsInput = z.infer<typeof DBConnectionIdParamsSchema>;

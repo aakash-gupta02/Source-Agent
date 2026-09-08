@@ -28,3 +28,6 @@ export function decrypt(encryptedText: string, version: string) {
 
   return decrypted;
 }
+
+// const decryptedData = decrypt("2303c1b905057a260488c86237e28f13:0f35299fe2e51d76153febcf8c9fa53f1cf5eb7c54c1d28801b7e396f5505302680544f38f4ce83e9671ec74742a7163c2ff138d309aaf4fd873f4b9ac131b0381", "v1");
+// console.log(decryptedData);
