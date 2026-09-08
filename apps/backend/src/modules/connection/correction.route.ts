@@ -1,6 +1,8 @@
 import { Router } from "express";
 import {
   CreateDBConnection,
+  GetDBConnection,
+  ListDBConnections,
   UpdateDBConnection,
 } from "./connection.controller.js";
 import { authMiddleware } from "../../core/middlewares/auth.middleware.js";
@@ -30,4 +32,8 @@ router.patch(
   validateBody(updateDatabaseConnectionSchema),
   UpdateDBConnection,
 );
+
+router.get("/", ListDBConnections);
+router.get("/:id", validateParams(DBConnectionIdParamsSchema), GetDBConnection);
+
 export default router;

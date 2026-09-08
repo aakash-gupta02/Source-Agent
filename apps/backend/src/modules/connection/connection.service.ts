@@ -10,9 +10,14 @@ import { env } from "../../core/config/env.js";
 import { AuthContext } from "../../shared/types/auth.type.js";
 import { StatusCodes } from "http-status-codes";
 import { Prisma } from "@repo/db";
+import {
+  DatabaseConnectionDetailDto,
+  DatabaseConnectionListDto,
+} from "@repo/shared/types";
+import { DatabaseConnection } from "@repo/db/models";
 
 const DatabaseConnection = db.databaseConnection;
-const keyVersion = env.CURRENT_KEY_VERSION;
+const currentKeyVersion = env.CURRENT_KEY_VERSION;
 
 const buildCredentials = (payload: CreateDatabaseConnectionInput) => {
   if (payload.connectionType === DatabaseConnectionType.URL) {
@@ -30,11 +35,19 @@ const buildCredentials = (payload: CreateDatabaseConnectionInput) => {
   };
 };
 
-// Create a database connection
+const sanitizeDatabaseConnection = (
+  connection: DatabaseConnection,
+): DatabaseConnectionListDto => {
+  const { credentials, keyVersion, ...connectionData } = connection;
+
+  return connectionData;
+};
+
+// Create DB Connection
 export const createDatabaseConnectionService = async (
   payload: CreateDatabaseConnectionInput,
   userId: AuthContext["userId"],
-) => {
+): Promise<DatabaseConnectionListDto> => {
   const existingConnection = await DatabaseConnection.findFirst({
     where: {
       userId,
@@ -50,20 +63,24 @@ export const createDatabaseConnectionService = async (
   }
 
   const credentials = buildCredentials(payload);
-  const encryptedCredentials = encrypt(JSON.stringify(credentials), keyVersion);
+
+  const encryptedCredentials = encrypt(
+    JSON.stringify(credentials),
+    currentKeyVersion,
+  );
 
   const databaseConnection = await DatabaseConnection.create({
     data: {
       name: payload.name,
       connectionType: payload.connectionType,
       credentials: encryptedCredentials,
-      keyVersion,
+      keyVersion: currentKeyVersion,
       userId,
       ssl: payload.ssl,
     },
   });
 
-  return databaseConnection;
+  return sanitizeDatabaseConnection(databaseConnection);
 };
 
 // Update DB Connection
@@ -71,7 +88,7 @@ export const updateDatabaseConnectionService = async (
   id: string,
   payload: UpdateDatabaseConnectionInput,
   userId: AuthContext["userId"],
-) => {
+): Promise<DatabaseConnectionListDto> => {
   const existingConnection = await DatabaseConnection.findFirst({
     where: {
       id,
@@ -85,7 +102,6 @@ export const updateDatabaseConnectionService = async (
 
   const updatedBody: Prisma.DatabaseConnectionUpdateInput = {};
 
-  // Metadata fields
   if (payload.name !== undefined) {
     updatedBody.name = payload.name;
   }
@@ -105,27 +121,22 @@ export const updateDatabaseConnectionService = async (
     payload.username !== undefined ||
     payload.password !== undefined;
 
-  // Credential fields
   if (existingConnection.connectionType === DatabaseConnectionType.URL) {
-    
     if (hasFieldCredentialUpdate) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
         "Credential fields are not allowed for URL connections.",
       );
     }
-    const hasCredentialUpdate = payload.url !== undefined;
 
-    if (hasCredentialUpdate) {
+    if (payload.url !== undefined) {
       const existingCredentials = JSON.parse(
         decrypt(existingConnection.credentials, existingConnection.keyVersion),
       ) as { url: string };
 
       const credentials = {
         ...existingCredentials,
-        ...(payload.url !== undefined && {
-          url: payload.url,
-        }),
+        url: payload.url,
       };
 
       updatedBody.credentials = encrypt(
@@ -173,10 +184,51 @@ export const updateDatabaseConnectionService = async (
     }
   }
 
-  return DatabaseConnection.update({
+  const databaseConnection = await DatabaseConnection.update({
     where: {
       id,
     },
     data: updatedBody,
   });
+
+  return sanitizeDatabaseConnection(databaseConnection);
+};
+
+// List DB Connections
+export const listDatabaseConnectionsService = async (
+  userId: AuthContext["userId"],
+): Promise<DatabaseConnectionListDto[]> => {
+  return DatabaseConnection.findMany({
+    where: {
+      userId,
+    },
+    omit: {
+      credentials: true,
+      keyVersion: true,
+    },
+  });
+};
+
+// Get DB Connection
+export const getDatabaseConnectionService = async (
+  id: string,
+  userId: AuthContext["userId"],
+): Promise<DatabaseConnectionDetailDto> => {
+  const connection = await DatabaseConnection.findUnique({
+    where: {
+      id,
+      userId,
+    },
+  });
+
+  if (!connection) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Database connection not found.");
+  }
+
+  const { credentials, keyVersion, ...connectionData } = connection;
+
+  return {
+    ...connectionData,
+    credentials: JSON.parse(decrypt(credentials, keyVersion)),
+  };
 };
