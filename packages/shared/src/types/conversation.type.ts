@@ -10,3 +10,8 @@ export interface ConversationDto extends Pick<
   | "createdAt"
   | "updatedAt"
 > {}
+
+export interface ConversationListDto extends Pick<
+  Conversation,
+  "id" | "title"
+> {}
