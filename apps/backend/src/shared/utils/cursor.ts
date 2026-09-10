@@ -1,4 +1,4 @@
-import type { Cursor } from "../types/pagination.types.js";
+import type { Cursor } from "@repo/shared/types";
 
 export const encodeCursor = (cursor: Cursor): string => {
   return Buffer.from(JSON.stringify(cursor)).toString("base64url");
