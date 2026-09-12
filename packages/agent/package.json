@@ -1,26 +1,19 @@
 {
   "name": "@repo/agent",
   "version": "1.0.0",
-  "description": "Production-grade modular Express REST API starter with TypeScript.",
-  "main": "dist/cli/index.js",
   "type": "module",
-  "scripts": {
-    "dev": "tsx src/cli/index.ts",
-    "start": "node dist/cli/index.js",
-    "build": "tsc",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "test": "node --test"
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
-  "keywords": [
-    "express",
-    "typescript",
-    "rest-api",
-    "jwt",
-    "zod"
-  ],
-  "author": "aakashgupta",
-  "license": "ISC",
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc"
+  },
   "dependencies": {
     "@langchain/core": "^1.2.9",
     "@langchain/google": "^0.2.3",
