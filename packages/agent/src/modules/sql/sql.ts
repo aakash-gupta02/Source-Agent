@@ -128,8 +128,8 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
       message.role === MessageRole.USER
         ? new HumanMessage(message.content)
         : new AIMessage(message.content),
-    )
-    
+    );
+
     return graph.invoke(
       {
         messages: [new SystemMessage(systemPrompt), ...agentMessages],
@@ -142,8 +142,32 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
     );
   };
 
+  const stream = async (
+    conversationId: string,
+    messages: { role: MessageRole; content: string }[],
+  ) => {
+    const agentMessages = messages.map((message) =>
+      message.role === MessageRole.USER
+        ? new HumanMessage(message.content)
+        : new AIMessage(message.content),
+    );
+
+    return graph.stream(
+      {
+        messages: [new SystemMessage(systemPrompt), ...agentMessages],
+      },
+      {
+        configurable: {
+          thread_id: conversationId,
+        },
+        streamMode: ["messages", "updates"],
+      },
+    );
+  };
+
   return {
     invoke,
+    stream,
   };
 };
 
@@ -156,6 +180,6 @@ export const generateTitle = async (llm: BaseChatModel, content: string) => {
   ]);
 
   console.log("response", response);
-  
+
   return response.title;
 };

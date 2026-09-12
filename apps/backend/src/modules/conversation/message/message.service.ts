@@ -107,7 +107,7 @@ export const userCreateMessageService = async (
     const title = await generateTitle(llm, payload.content);
 
     console.log("title", title);
-    
+
     await Conversation.update({
       where: { id: conversationId },
       data: { title },
@@ -120,6 +120,13 @@ export const userCreateMessageService = async (
   });
 
   const result = await agent.invoke(conversationId, messages);
+
+  const stream = await agent.stream(conversationId, messages);
+
+  for await (const chunk of stream) {
+    console.log("chunk");
+    console.dir(chunk, { depth: null });
+  }
 
   const lastMessage = result.messages.at(-1);
 
