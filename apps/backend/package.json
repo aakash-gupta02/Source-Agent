@@ -43,7 +43,8 @@
     "winston": "^3.18.3",
     "zod": "^4.1.11",
     "@repo/shared": "*",
-    "@repo/db": "*"
+    "@repo/db": "*",
+    "@repo/agent": "*"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

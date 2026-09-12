@@ -1,5 +1,5 @@
 {
-  "name": "deep-research",
+  "name": "@repo/agent",
   "version": "1.0.0",
   "description": "Production-grade modular Express REST API starter with TypeScript.",
   "main": "dist/cli/index.js",
@@ -29,7 +29,9 @@
     "dotenv": "^17.2.3",
     "pg": "^8.23.0",
     "winston": "^3.18.3",
-    "zod": "^4.1.11"
+    "zod": "^4.1.11",
+    "@repo/shared": "*",
+    "@repo/db": "*"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
