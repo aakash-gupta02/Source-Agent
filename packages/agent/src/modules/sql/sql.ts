@@ -1,37 +1,26 @@
-import { model } from "../../core/config/model.js";
+import type { Pool } from "pg";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import {
-  BaseMessage,
+  AIMessage,
   HumanMessage,
   SystemMessage,
+  type BaseMessage,
 } from "@langchain/core/messages";
 import {
   Annotation,
-  Command,
   END,
   MemorySaver,
   START,
   StateGraph,
 } from "@langchain/langgraph";
-import {
-  executeSQL,
-  getColumnValues,
-  getSchema,
-  getTables,
-  getTableSample,
-  getTableSchema,
-} from "./db.service.js";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
-const allTools = [
-  getTables,
-  getTableSchema,
-  getTableSample,
-  getColumnValues,
-  executeSQL,
-];
+import { createSqlTools } from "./db.service.js";
 
-const tools = new ToolNode(allTools);
-const modelWithTools = model.bindTools(allTools);
+export interface CreateSqlAgentInput {
+  llm: BaseChatModel;
+  pool: Pool;
+}
 
 const systemPrompt = `
 You are a PostgreSQL database assistant.
@@ -42,7 +31,6 @@ Rules:
 - Use get_table_sample after inspecting a relevant table's schema when the user's question requires knowing actual values stored in the database.
 - Use get_column_values when you need to know the distinct values stored in a specific column.
 - Use execute_sql to execute SQL queries.
-- Use get_table_sample when you need to understand the actual values or data patterns in a relevant table.
 - Only inspect tables and columns that are available through the database tools.
 - Never invent tables, columns, or relationships.
 - Use foreign key relationships from get_table_schema when determining how tables should be joined.
@@ -52,221 +40,91 @@ Rules:
 Error handling:
 - Tool errors may contain: status, code, message, and nextStep.
 - Follow the nextStep provided by a tool error when deciding what to do next.
-- If DATABASE_UNAVAILABLE, do not call database tools again. Explain that the database is unavailable.
+- If DATABASE_UNAVAILABLE, do not call database tools again.
 - If INVALID_SQL, correct the SQL and retry when possible.
-- If RESULT_TOO_LARGE, do not retry the same query or use another tool to retrieve the complete result. Ask the user to narrow the request.
-- If USER_REJECTED, do not retry the rejected write operation. Tell the user that the operation was cancelled.
-- get_table_sample may be used only when a sample is appropriate, not as a replacement for the requested complete result.
+- If RESULT_TOO_LARGE, do not retry the same query. Ask the user to narrow the request.
+- If USER_REJECTED_QUERY, do not retry the rejected write operation.
+
 `;
 
-const State = Annotation.Root({
-  messages: Annotation<BaseMessage[]>({
-    reducer: (left, right) => left.concat(right),
-    default: () => [],
-  }),
+export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
+  const tools = createSqlTools(pool);
+  const modelWithTools = llm.bindTools!(tools);
 
-  sqlAttempts: Annotation<number>({
-    reducer: (_, right) => right,
-    default: () => 0,
-  }),
-});
+  const State = Annotation.Root({
+    messages: Annotation<BaseMessage[]>({
+      reducer: (left, right) => left.concat(right),
+      default: () => [],
+    }),
 
-const agent = async (state: typeof State.State) => {
-  const response = await modelWithTools.invoke(state.messages);
-
-  const executeSQLCall = response.tool_calls?.some(
-    (call) => call.name === "execute_sql",
-  );
-
-  return {
-    messages: [response],
-    sqlAttempts: executeSQLCall ? state.sqlAttempts + 1 : state.sqlAttempts,
-  };
-};
-
-const shouldContinue = (state: typeof State.State) => {
-  const lastMessage = state.messages.at(-1);
-
-  if (
-    !lastMessage ||
-    !("tool_calls" in lastMessage) ||
-    !lastMessage.tool_calls?.length
-  ) {
-    return END;
-  }
-
-  const wantsSQL = lastMessage.tool_calls.some(
-    (call) => call.name === "execute_sql",
-  );
-
-  if (wantsSQL && state.sqlAttempts >= 20) {
-    console.log("🛑 SQL retry limit reached");
-    return END;
-  }
-
-  return "tools";
-};
-
-const checkpointer = new MemorySaver();
-
-const graph = new StateGraph(State)
-  .addNode("agent", agent)
-  .addNode("tools", tools)
-
-  .addEdge(START, "agent")
-
-  .addConditionalEdges("agent", shouldContinue, ["tools", END])
-
-  .addEdge("tools", "agent")
-
-  .compile({
-    checkpointer,
+    sqlAttempts: Annotation<number>({
+      reducer: (_, right) => right,
+      default: () => 0,
+    }),
   });
 
-import crypto from "node:crypto";
-import readline from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
+  const agent = async (state: typeof State.State) => {
+    const response = await modelWithTools.invoke(state.messages);
 
-// --------------------------------------------------
-// Run one question
-// --------------------------------------------------
-
-const runQuestion = async (question: string) => {
-  console.log("\n" + "=".repeat(70));
-  console.log(`QUESTION: ${question}`);
-  console.log("=".repeat(70));
-
-  const config = {
-    configurable: {
-      // Fresh conversation/execution for every question
-      thread_id: crypto.randomUUID(),
-    },
-  };
-
-  const result = await graph.invoke(
-    {
-      messages: [new SystemMessage(systemPrompt), new HumanMessage(question)],
-    },
-    config,
-  );
-
-  // ------------------------------------------------
-  // HITL
-  // ------------------------------------------------
-
-  const interrupt = result.__interrupt__?.[0];
-
-  if (interrupt) {
-    console.log("\n" + "=".repeat(70));
-    console.log("AGENT INTERRUPTED");
-    console.log("=".repeat(70));
-
-    const { type, sql } = interrupt.value;
-
-    console.log("TYPE:", type);
-    console.log("SQL:", sql);
-
-    const rl = readline.createInterface({
-      input,
-      output,
-    });
-
-    const answer = await rl.question("\nExecute this query? (y/n): ");
-
-    await rl.close();
-
-    if (answer.trim().toLowerCase() !== "y") {
-      console.log("\n❌ REJECTED — query was not executed.");
-      return;
-    }
-
-    console.log("\n✅ APPROVED\n");
-
-    // IMPORTANT:
-    // Same config/thread_id used for the interrupted execution
-    const resumed = await graph.invoke(
-      new Command({
-        resume: {
-          approved: true,
-        },
-      }),
-      config,
+    const executeSQLCall = response.tool_calls?.some(
+      (call) => call.name === "execute_sql",
     );
 
-    printResult(resumed);
+    return {
+      messages: [response],
+      sqlAttempts: executeSQLCall ? state.sqlAttempts + 1 : state.sqlAttempts,
+    };
+  };
 
-    return;
-  }
+  const shouldContinue = (state: typeof State.State) => {
+    const lastMessage = state.messages.at(-1);
 
-  // ------------------------------------------------
-  // Normal query
-  // ------------------------------------------------
+    if (
+      !lastMessage ||
+      !AIMessage.isInstance(lastMessage) ||
+      !lastMessage.tool_calls?.length
+    ) {
+      return END;
+    }
 
-  printResult(result);
+    const wantsSQL = lastMessage.tool_calls.some(
+      (call) => call.name === "execute_sql",
+    );
+
+    if (wantsSQL && state.sqlAttempts >= 20) {
+      return END;
+    }
+
+    return "tools";
+  };
+
+  const graph = new StateGraph(State)
+    .addNode("agent", agent)
+    .addNode("tools", new ToolNode(tools))
+    .addEdge(START, "agent")
+    .addConditionalEdges("agent", shouldContinue, ["tools", END])
+    .addEdge("tools", "agent")
+    .compile({
+      checkpointer: new MemorySaver(),
+    });
+
+  const invoke = async (conversationId: string, userMessage: string) => {
+    return graph.invoke(
+      {
+        messages: [
+          new SystemMessage(systemPrompt),
+          new HumanMessage(userMessage),
+        ],
+      },
+      {
+        configurable: {
+          thread_id: conversationId,
+        },
+      },
+    );
+  };
+
+  return {
+    invoke,
+  };
 };
-
-// --------------------------------------------------
-// Result logging
-// --------------------------------------------------
-
-const printResult = (result: any) => {
-  console.log("\n" + "=".repeat(70));
-  console.log("GRAPH TRACE");
-  console.log("=".repeat(70));
-
-  result.messages.forEach((message: any, index: number) => {
-    console.log(`\n--- MESSAGE ${index + 1} ---`);
-    console.log("TYPE:", message.type);
-
-    if (message.content) {
-      console.log("CONTENT:");
-      console.log(message.content);
-    }
-
-    if (message.tool_calls?.length) {
-      console.log("TOOL CALLS:");
-
-      for (const call of message.tool_calls) {
-        console.log(`  ${call.name}`);
-        console.log("  ARGS:", JSON.stringify(call.args, null, 2));
-      }
-    }
-
-    const reasoning = message.additional_kwargs?.reasoning_content;
-
-    if (reasoning) {
-      console.log("REASONING:");
-      console.log(reasoning);
-    }
-  });
-
-  const finalMessage = result.messages.at(-1);
-
-  console.log("\n" + "=".repeat(70));
-  console.log("FINAL ANSWER");
-  console.log("=".repeat(70));
-
-  console.log(finalMessage?.content ?? "(no response)");
-
-  console.log("\nMODEL:");
-  console.log(finalMessage?.response_metadata?.model ?? "unknown");
-};
-
-// --------------------------------------------------
-// Questions
-// --------------------------------------------------
-
-const questions = [
-  "Which user has spent the most money on completed orders?",
-  "Which user has placed the most orders?",
-  "How many users are in the database?",
-  "Which users have never placed an order?",
-  "What is the average amount of completed orders?",
-  "What are the different values of order status?",
-  "What are the different order statuses and how many orders have each status?",
-  "List all users from the users table",
-  "Update Aakash's email to aakash@example.com",
-];
-
-// Pick one question for now
-await runQuestion(questions[3]);
