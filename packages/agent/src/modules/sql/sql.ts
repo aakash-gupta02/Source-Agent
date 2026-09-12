@@ -16,6 +16,8 @@ import {
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
 import { createSqlTools } from "./db.service.js";
+import { MessageRole } from "@repo/db";
+import { TitleResponseSchema } from "./schema.ts";
 
 export interface CreateSqlAgentInput {
   llm: BaseChatModel;
@@ -45,6 +47,16 @@ Error handling:
 - If RESULT_TOO_LARGE, do not retry the same query. Ask the user to narrow the request.
 - If USER_REJECTED_QUERY, do not retry the rejected write operation.
 
+`;
+
+export const systemPromptForTitle = `
+Generate a short title for this conversation.
+
+Rules:
+- Maximum 6 words
+- No quotes
+- No punctuation
+- Describe the user's main intent
 `;
 
 export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
@@ -108,13 +120,19 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
       checkpointer: new MemorySaver(),
     });
 
-  const invoke = async (conversationId: string, userMessage: string) => {
+  const invoke = async (
+    conversationId: string,
+    messages: { role: MessageRole; content: string }[],
+  ) => {
+    const agentMessages = messages.map((message) =>
+      message.role === MessageRole.USER
+        ? new HumanMessage(message.content)
+        : new AIMessage(message.content),
+    )
+    
     return graph.invoke(
       {
-        messages: [
-          new SystemMessage(systemPrompt),
-          new HumanMessage(userMessage),
-        ],
+        messages: [new SystemMessage(systemPrompt), ...agentMessages],
       },
       {
         configurable: {
@@ -127,4 +145,17 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
   return {
     invoke,
   };
+};
+
+export const generateTitle = async (llm: BaseChatModel, content: string) => {
+  const structuredOutput = llm.withStructuredOutput(TitleResponseSchema);
+
+  const response = await structuredOutput.invoke([
+    new SystemMessage(systemPromptForTitle),
+    new HumanMessage(content),
+  ]);
+
+  console.log("response", response);
+  
+  return response.title;
 };

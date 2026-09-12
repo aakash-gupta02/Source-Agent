@@ -17,6 +17,7 @@ import {
   createModel,
   createPostgresConnection,
   createSqlAgent,
+  generateTitle,
 } from "@repo/agent";
 import {
   buildPostgresConnectionString,
@@ -69,6 +70,15 @@ export const userCreateMessageService = async (
     },
   });
 
+  const messages = await Message.findMany({
+    where: { conversationId },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: {
+      content: true,
+      role: true,
+    },
+  });
+
   const decryptedAi = decrypt(
     conversation.aiProvider.credentials,
     conversation.aiProvider.keyVersion,
@@ -93,12 +103,23 @@ export const userCreateMessageService = async (
     buildPostgresConnectionString(databaseCredentials),
   );
 
+  if (!conversation.title) {
+    const title = await generateTitle(llm, payload.content);
+
+    console.log("title", title);
+    
+    await Conversation.update({
+      where: { id: conversationId },
+      data: { title },
+    });
+  }
+
   const agent = createSqlAgent({
     llm,
     pool,
   });
 
-  const result = await agent.invoke(conversationId, payload.content);
+  const result = await agent.invoke(conversationId, messages);
 
   const lastMessage = result.messages.at(-1);
 

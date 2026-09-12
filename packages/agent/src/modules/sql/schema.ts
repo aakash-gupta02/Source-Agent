@@ -39,3 +39,14 @@ export type ToolResponse = {
   rowCount: number;
   data: Record<string, unknown>[];
 };
+
+export const TitleResponseSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .describe("A short title for the conversation."),
+});
+
+export type TitleResponse = z.infer<typeof TitleResponseSchema>;
