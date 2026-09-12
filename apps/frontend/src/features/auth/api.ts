@@ -1,4 +1,4 @@
-import type { AuthUserDto, RegisterableRole } from "@repo/shared/types";
+import type { AuthUserDto } from "@repo/shared/types";
 import type { LoginInput, RegisterInput } from "@repo/shared/validations";
 
 import { env } from "@/config/env";
@@ -29,15 +29,6 @@ export const authApi = {
 
   refresh: () => api.post<RefreshResponse>(`${BASE}/refresh`),
 
-  /** Full-page redirect; backend sets cookies. */
-
-  getGoogleAuthUrl: (role?: RegisterableRole) => {
-    const url = new URL(`${env.apiUrl}${BASE}/google`);
-
-    if (role) {
-      url.searchParams.set("role", role);
-    }
-
-    return url.toString();
-  },
+  /** Full-page redirect; backend sets cookies and redirects back. */
+  getGoogleAuthUrl: () => `${env.apiUrl}${BASE}/google`,
 };

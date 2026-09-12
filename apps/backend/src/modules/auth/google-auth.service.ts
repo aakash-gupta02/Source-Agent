@@ -101,6 +101,6 @@ export const googleCallbackService = async (
     data: updateData,
   });
 
-  const redirectUrl = "/";
+  const redirectUrl = "/app";
   return { accessToken, refreshToken, redirectUrl };
 };

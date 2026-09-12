@@ -1,10 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { authApi } from "../api";
-import { RegisterableRole } from "@repo/shared/types";
-
-interface GoogleButtonProps {
-  role?: RegisterableRole;
-}
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -29,15 +24,15 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-export default function GoogleButton({ role }: GoogleButtonProps) {
+export default function GoogleButton() {
   return (
     <Button
       type="button"
       variant="outline"
       size="lg"
-      className="h-11 w-full rounded-xl border-border bg-white text-body-emphasis font-medium text-ink hover:bg-surface"
+      className="h-11 w-full rounded-xl text-body-emphasis font-medium"
       onClick={() => {
-        window.location.href = authApi.getGoogleAuthUrl(role);
+        window.location.href = authApi.getGoogleAuthUrl();
       }}
     >
       <GoogleIcon className="size-4" />

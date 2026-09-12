@@ -12,6 +12,7 @@ import {
 } from "./auth.service.js";
 import { clearCookie, setCookie } from "../../shared/utils/SetCookie.js";
 import { generateGoogleAuthUrl } from "../../shared/utils/Google.js";
+import { env } from "../../core/config/env.js";
 import {
   GoogleAuthInput,
 } from "@repo/shared/validations";
@@ -93,6 +94,6 @@ export const googleCallback = CatchAsync(
     clearCookie(res, "oauth_state");
     clearCookie(res, "oauth_role");
 
-    res.redirect(`http://localhost:4000${redirectUrl}`);
+    res.redirect(`${env.CLIENT}${redirectUrl}`);
   },
 );
