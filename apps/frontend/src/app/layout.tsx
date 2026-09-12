@@ -17,8 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Brand Collaboration",
-  description: "Discover creators with real performance data",
+  title: "Source Agent",
+  description:
+    "Ask questions about your data and get intelligent answers with AI.",
 };
 
 export default function RootLayout({
@@ -29,7 +30,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("h-full antialiased font-sans", inter.variable, geistMono.variable)}
+      className={cn(
+        "h-full antialiased font-sans",
+        inter.variable,
+        geistMono.variable,
+      )}
     >
       <body className="min-h-full flex flex-col">
         <AppProviders>{children}</AppProviders>
