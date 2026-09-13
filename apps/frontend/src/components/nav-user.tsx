@@ -2,7 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import type { AuthUserDto } from "@repo/shared/types";
-import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react";
+import {
+  ChevronsUpDownIcon,
+  LogOutIcon,
+  MoonIcon,
+  SunIcon,
+} from "lucide-react";
+import { useTheme } from "next-themes";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -30,6 +36,8 @@ export function NavUser({ user }: { user: AuthUserDto }) {
   const { isMobile } = useSidebar();
   const label = user.email.split("@")[0];
   const initials = label.slice(0, 2).toUpperCase();
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
 
   const handleLogout = () => {
     logout.mutate(undefined, {
@@ -81,6 +89,12 @@ export function NavUser({ user }: { user: AuthUserDto }) {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+            >
+              {isDark ? <SunIcon /> : <MoonIcon />}
+              {isDark ? "Light mode" : "Dark mode"}
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={handleLogout}
               disabled={logout.isPending}
