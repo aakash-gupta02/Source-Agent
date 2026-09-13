@@ -1,11 +1,10 @@
 "use client";
 
 import { ConversationComposer } from "./conversation-composer";
-import { ConversationMessages } from "./conversation-messages";
+import { ConversationTranscript } from "./conversation-transcript";
 
 import { useConversation } from "@/features/conversation/hooks";
 import { useMessages } from "@/features/conversation/message/hooks";
-import { ConversationTranscript } from "./conversation-transcript";
 
 interface ConversationProps {
   conversationId: string;
@@ -18,8 +17,7 @@ export function Conversation({ conversationId }: ConversationProps) {
     isError: conversationError,
   } = useConversation(conversationId);
 
-  const { data: messageData, isLoading: messagesLoading } =
-    useMessages(conversationId);
+  const { data: messageData } = useMessages(conversationId);
 
   const messages = messageData?.pages.flatMap((page) => page.messages) ?? [];
 
@@ -40,28 +38,22 @@ export function Conversation({ conversationId }: ConversationProps) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
-      {/* Header */}
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <header className="shrink-0 border-b px-6 py-4">
         <h1 className="font-medium">
           {conversation.title || "New conversation"}
         </h1>
       </header>
-  
-      {/* Chat */}
-      <div className="flex min-h-0 flex-1 flex-col">
-        {/* Messages */}
-        <ConversationTranscript messages={messages} />
-  
-        {/* Composer */}
-        <div className="shrink-0 px-4 pb-4">
-          <div className="mx-auto w-full max-w-4xl">
-            <ConversationComposer
-              value=""
-              onChange={() => {}}
-              onSubmit={() => {}}
-            />
-          </div>
+
+      <ConversationTranscript messages={messages} />
+
+      <div className="shrink-0 px-4 pb-4 pt-2">
+        <div className="mx-auto w-full max-w-4xl">
+          <ConversationComposer
+            value=""
+            onChange={() => {}}
+            onSubmit={() => {}}
+          />
         </div>
       </div>
     </div>

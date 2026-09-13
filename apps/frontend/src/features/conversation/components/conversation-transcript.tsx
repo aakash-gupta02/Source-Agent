@@ -30,7 +30,7 @@ export function ConversationTranscript({
   messages,
 }: ConversationTranscriptProps) {
   return (
-    <div className="min-h-0 flex-1">
+    <div className="min-h-0 flex-1 overflow-hidden">
       <MessageScrollerProvider>
         <MessageScroller>
           <MessageScrollerViewport>

@@ -19,7 +19,9 @@ export function AppLayout({
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset className="h-svh min-h-0 overflow-hidden">
+        {children}
+      </SidebarInset>
     </SidebarProvider>
   );
 }

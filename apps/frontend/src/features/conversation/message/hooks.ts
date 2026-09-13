@@ -27,7 +27,7 @@ export function useMessages(conversationId: string) {
       const response = await messageApi.getList(conversationId, {
         limit: 20,
         cursor: pageParam,
-        sortOrder: "desc",
+        sortOrder: "asc",
       });
 
       return response.data;

@@ -33,9 +33,9 @@ export default function ProtectedAppLayout({
 
   return (
     <AppLayout user={user}>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         {children}
-      </main>
+      </div>
     </AppLayout>
   );
 }
