@@ -59,7 +59,7 @@ export default function RegisterPage() {
         <h1 className="text-h2 font-semibold text-ink">
           {REGISTER_COPY.title}
         </h1>
-        <p className="text-body text-gray-600">{REGISTER_COPY.subtitle}</p>
+        <p className="text-body text-muted-foreground">{REGISTER_COPY.subtitle}</p>
       </div>
 
       <form className="mt-7 space-y-5" onSubmit={onSubmit} noValidate>
@@ -135,13 +135,13 @@ export default function RegisterPage() {
 
         <div className="flex items-center gap-3 py-0.5">
           <Separator className="flex-1" />
-          <span className="text-caption text-gray-400">or</span>
+          <span className="text-caption text-muted-foreground">or</span>
           <Separator className="flex-1" />
         </div>
 
         <GoogleButton />
 
-        <p className="pt-1 text-center text-body text-gray-600">
+        <p className="pt-1 text-center text-body text-muted-foreground">
           Already have an account?{" "}
           <Link
             href={LOGIN_ROUTE}

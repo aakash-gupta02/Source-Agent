@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import type { AuthUserDto } from "@repo/shared/types";
 import {
   BotIcon,
+  BrainCircuit,
   ChevronDownIcon,
   DatabaseIcon,
   MessageSquareIcon,
@@ -49,7 +50,7 @@ const primaryItems = [
   {
     title: "AI providers",
     href: AI_PROVIDERS_ROUTE,
-    icon: BotIcon,
+    icon: BrainCircuit,
   },
   {
     title: "Database connections",

@@ -51,7 +51,7 @@ export function getDatabaseConnectionColumns({
       header: "SSL",
 
       cell: ({ row }) => (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-muted-foreground">
           {row.original.ssl ? "Enabled" : "Disabled"}
         </span>
       ),
@@ -70,7 +70,7 @@ export function getDatabaseConnectionColumns({
             className={
               active
                 ? "inline-flex rounded-full bg-success-tint px-2.5 py-1 text-xs font-medium text-success"
-                : "inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600"
+                : "inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
             }
           >
             {active ? "Active" : "Inactive"}

@@ -88,7 +88,7 @@ export function AIProviderPanel() {
               AI Providers
             </h1>
 
-            <p className="mt-1 text-body text-gray-600">
+            <p className="mt-1 text-body text-muted-foreground">
               Configure the AI providers used by Source Agent.
             </p>
           </div>
@@ -99,9 +99,9 @@ export function AIProviderPanel() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-xl border bg-white">
+        <div className="overflow-hidden rounded-xl border bg-card">
           {providers.isLoading ? (
-            <div className="flex h-48 items-center justify-center text-sm text-gray-500">
+            <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
               Loading providers...
             </div>
           ) : providers.isError ? (
@@ -170,7 +170,7 @@ export function AIProviderPanel() {
                           No AI providers
                         </p>
 
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           Add your first AI provider
                           to get started.
                         </p>

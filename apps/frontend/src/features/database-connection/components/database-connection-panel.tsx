@@ -76,7 +76,7 @@ export function DatabaseConnectionPanel() {
               Database Connections
             </h1>
 
-            <p className="mt-1 text-body text-gray-600">
+            <p className="mt-1 text-body text-muted-foreground">
               Connect Source Agent to your databases.
             </p>
           </div>
@@ -85,9 +85,9 @@ export function DatabaseConnectionPanel() {
         </div>
 
         {/* Table */}
-        <div className="overflow-hidden rounded-xl border bg-white">
+        <div className="overflow-hidden rounded-xl border bg-card">
           {connections.isLoading ? (
-            <div className="flex h-48 items-center justify-center text-sm text-gray-500">
+            <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
               Loading connections...
             </div>
           ) : connections.isError ? (
@@ -136,7 +136,7 @@ export function DatabaseConnectionPanel() {
                       <div className="space-y-2">
                         <p className="font-medium">No database connections</p>
 
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           Add your first database connection to get started.
                         </p>
                       </div>
