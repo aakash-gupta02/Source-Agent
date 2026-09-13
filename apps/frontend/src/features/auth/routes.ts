@@ -4,7 +4,7 @@ export const AI_PROVIDERS_ROUTE = `${APP_ROUTE}/ai-providers`;
 export const DATABASE_CONNECTIONS_ROUTE = `${APP_ROUTE}/database-connections`;
 
 export const conversationRoute = (id: string) =>
-  `${APP_ROUTE}/conversations/${id}`;
+  `${APP_ROUTE}/c/${id}`;
 
 export const LOGIN_ROUTE = "/login";
 export const REGISTER_ROUTE = "/register";
