@@ -35,3 +35,10 @@ export function useZodForm<TSchema extends z.ZodType>(
     resolver: zodResolver(schema as never),
   });
 }
+
+/** Narrow RHF error messages that a union/discriminated schema can widen. */
+export function fieldMessage(
+  error: { message?: unknown } | undefined,
+): string | undefined {
+  return typeof error?.message === "string" ? error.message : undefined;
+}
