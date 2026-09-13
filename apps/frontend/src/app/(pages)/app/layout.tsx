@@ -4,22 +4,25 @@ import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import { AppLayout } from "@/components/app-layout";
 import { useCurrentUser } from "@/features/auth/hooks";
 import { LOGIN_ROUTE } from "@/features/auth/routes";
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+export default function ProtectedAppLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const router = useRouter();
-  const { data: user, isPending, isError } = useCurrentUser();
-
-  const isAuthenticated = Boolean(user);
+  const { data: user, isPending } = useCurrentUser();
 
   useEffect(() => {
-    if (!isPending && !isAuthenticated) {
+    if (!isPending && !user) {
       router.replace(LOGIN_ROUTE);
     }
-  }, [isPending, isAuthenticated, isError, router]);
+  }, [isPending, user, router]);
 
-  if (isPending || !isAuthenticated) {
+  if (isPending || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="size-5 animate-spin text-gray-400" />
@@ -28,5 +31,5 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return <AppLayout user={user}>{children}</AppLayout>;
 }

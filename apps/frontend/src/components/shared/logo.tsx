@@ -4,10 +4,17 @@ import { cn } from "@/lib/utils";
 type LogoProps = {
   className?: string;
   variant?: "text" | "icon" | "both";
+  iconClassName?: string;
+  textClassName?: string;
 };
 
 /** Source Agent brand logo — use across auth, nav, and marketing. */
-export function Logo({ className, variant = "both" }: LogoProps) {
+export function Logo({
+  className,
+  variant = "both",
+  iconClassName,
+  textClassName,
+}: LogoProps) {
   const showIcon = variant === "icon" || variant === "both";
   const showText = variant === "text" || variant === "both";
 
@@ -19,12 +26,17 @@ export function Logo({ className, variant = "both" }: LogoProps) {
           alt="Source Agent"
           width={32}
           height={32}
-          className="size-8 object-contain"
+          className={cn("size-8 object-contain", iconClassName)}
         />
       )}
 
       {showText && (
-        <span className="text-h2 font-semibold tracking-tight text-ink">
+        <span
+          className={cn(
+            "text-h2 font-semibold tracking-tight text-ink",
+            textClassName,
+          )}
+        >
           Source Agent
         </span>
       )}
