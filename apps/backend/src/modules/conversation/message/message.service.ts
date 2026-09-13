@@ -6,7 +6,7 @@ import {
   PaginationQuery,
   UserCreateMessageInput,
 } from "@repo/shared/validations";
-import { MessageDto } from "@repo/shared/types";
+import { MessageDto, MessageListDto } from "@repo/shared/types";
 import { db } from "@repo/db/client";
 import { AuthContext } from "../../../shared/types/auth.type.js";
 import { MessageRole, Prisma } from "@repo/db";
@@ -146,7 +146,7 @@ export const listMessagesService = async (
   conversationId: string,
   userId: AuthContext["userId"],
   query: PaginationQuery,
-) => {
+): Promise<MessageListDto> => {
   const where: Prisma.MessageWhereInput = {
     AND: [
       buildCursorFilter(query.cursor),
