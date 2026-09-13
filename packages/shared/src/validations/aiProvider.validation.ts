@@ -4,10 +4,33 @@ import { atLeastOneField } from "./helpers/atLeastOneField.js";
 import { idParamsSchema } from "./common/IdParams.js";
 
 export const aiProvider = {
-  name: z.string().trim().min(1).max(100),
-  provider: z.enum(AIProviderType),
-  credentials: z.string().trim().min(1),
-  model: z.string().trim().min(1).max(100),
+  name: z
+    .string({
+      message: "Provider name is required",
+    })
+    .trim()
+    .min(1, "Provider name is required")
+    .max(100, "Provider name must be at most 100 characters"),
+
+  provider: z.enum(AIProviderType, {
+    message: "Please select a valid AI provider",
+  }),
+
+  credentials: z
+    .string({
+      message: "Credentials are required",
+    })
+    .trim()
+    .min(1, "Credentials are required"),
+
+  model: z
+    .string({
+      message: "Model is required",
+    })
+    .trim()
+    .min(1, "Model is required")
+    .max(100, "Model must be at most 100 characters"),
+
   isActive: z.boolean(),
 };
 

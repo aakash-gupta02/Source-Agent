@@ -12,7 +12,7 @@ import type { z } from "zod";
 
 type UseZodFormProps<TSchema extends z.ZodType> = Omit<
   UseFormProps<z.infer<TSchema> & FieldValues>,
-  "resolver"
+  "resolver" | "defaultValues"
 > & {
   schema: TSchema;
   defaultValues?: DefaultValues<z.input<TSchema> & FieldValues>;
@@ -22,9 +22,15 @@ type UseZodFormProps<TSchema extends z.ZodType> = Omit<
 export function useZodForm<TSchema extends z.ZodType>(
   props: UseZodFormProps<TSchema>,
 ): UseFormReturn<z.infer<TSchema> & FieldValues> {
-  const { schema, ...formProps } = props;
+  const { schema, defaultValues, ...formProps } = props;
+
   return useForm({
     ...formProps,
+    // Defaults are declared in the schema's input shape; the resolver produces
+    // the output shape RHF tracks.
+    defaultValues: defaultValues as DefaultValues<
+      z.infer<TSchema> & FieldValues
+    >,
     // Shared schemas are Zod 4; resolver types are still catching up.
     resolver: zodResolver(schema as never),
   });

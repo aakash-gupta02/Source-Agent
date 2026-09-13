@@ -31,5 +31,11 @@ export default function ProtectedAppLayout({
     );
   }
 
-  return <AppLayout user={user}>{children}</AppLayout>;
+  return (
+    <AppLayout user={user}>
+      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
+        {children}
+      </main>
+    </AppLayout>
+  );
 }
