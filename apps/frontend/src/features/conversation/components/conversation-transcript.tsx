@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -12,6 +13,7 @@ import {
   MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
+  useMessageScrollerScrollable,
 } from "@/components/ui/message-scroller";
 
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
@@ -24,15 +26,61 @@ interface ConversationMessage {
 
 interface ConversationTranscriptProps {
   messages: ConversationMessage[];
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  onLoadOlder?: () => void;
+}
+
+function LoadOlderOnStart({
+  enabled,
+  onLoadOlder,
+}: {
+  enabled: boolean;
+  onLoadOlder: () => void;
+}) {
+  const { start } = useMessageScrollerScrollable();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setReady(true);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !enabled || start) return;
+
+    onLoadOlder();
+  }, [enabled, onLoadOlder, ready, start]);
+
+  return null;
 }
 
 export function ConversationTranscript({
   messages,
+  hasNextPage = false,
+  isFetchingNextPage = false,
+  onLoadOlder,
 }: ConversationTranscriptProps) {
   return (
     <div className="min-h-0 flex-1 overflow-hidden">
       <MessageScrollerProvider>
+        {onLoadOlder ? (
+          <LoadOlderOnStart
+            enabled={hasNextPage && !isFetchingNextPage}
+            onLoadOlder={onLoadOlder}
+          />
+        ) : null}
+
         <MessageScroller>
+          {isFetchingNextPage ? (
+            <p className="pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-xs text-muted-foreground">
+              Loading earlier messages...
+            </p>
+          ) : null}
+
           <MessageScrollerViewport>
             <MessageScrollerContent className="mx-auto w-full max-w-4xl px-4 py-6">
               {messages.map((message) => {

@@ -27,7 +27,8 @@ export function useMessages(conversationId: string) {
       const response = await messageApi.getList(conversationId, {
         limit: 20,
         cursor: pageParam,
-        sortOrder: "asc",
+        // Backend cursor uses `createdAt/id < cursor`, so pages must be newest-first.
+        sortOrder: "desc",
       });
 
       return response.data;
@@ -36,7 +37,9 @@ export function useMessages(conversationId: string) {
     initialPageParam: undefined as string | undefined,
 
     getNextPageParam: (lastPage) =>
-      lastPage.meta.hasNextPage ? lastPage.meta.nextCursor : undefined,
+      lastPage.meta.hasNextPage && lastPage.meta.nextCursor
+        ? lastPage.meta.nextCursor
+        : undefined,
 
     enabled: Boolean(conversationId),
   });
