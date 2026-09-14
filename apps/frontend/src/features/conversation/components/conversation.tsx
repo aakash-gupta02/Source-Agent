@@ -15,6 +15,7 @@ interface ConversationProps {
 
 export function Conversation({ conversationId }: ConversationProps) {
   const [message, setMessage] = useState("");
+  const [pendingUserContent, setPendingUserContent] = useState("");
   const [streamingContent, setStreamingContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
 
@@ -50,6 +51,7 @@ export function Conversation({ conversationId }: ConversationProps) {
     if (isStreaming) return;
 
     setMessage("");
+    setPendingUserContent(content);
     setStreamingContent("");
     setIsStreaming(true);
 
@@ -70,6 +72,7 @@ export function Conversation({ conversationId }: ConversationProps) {
 
       await refetch();
       setStreamingContent("");
+      setPendingUserContent("");
     } catch (error) {
       console.error("Failed to stream message:", error);
     } finally {
@@ -107,7 +110,9 @@ export function Conversation({ conversationId }: ConversationProps) {
 
       <ConversationTranscript
         messages={messages}
+        pendingUserContent={pendingUserContent}
         streamingContent={streamingContent}
+        isStreaming={isStreaming}
         hasNextPage={Boolean(hasNextPage)}
         isFetchingNextPage={isFetchingNextPage}
         onLoadOlder={handleLoadOlder}

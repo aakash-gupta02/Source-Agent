@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -13,6 +13,7 @@ import {
   MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
+  useMessageScroller,
   useMessageScrollerScrollable,
 } from "@/components/ui/message-scroller";
 
@@ -26,7 +27,9 @@ interface ConversationMessage {
 
 interface ConversationTranscriptProps {
   messages: ConversationMessage[];
+  pendingUserContent?: string;
   streamingContent?: string;
+  isStreaming?: boolean;
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   onLoadOlder?: () => void;
@@ -59,22 +62,67 @@ function LoadOlderOnStart({
   return null;
 }
 
+function FollowBottomOnUpdate({
+  active,
+  tick,
+}: {
+  active: boolean;
+  tick?: string;
+}) {
+  const { scrollToEnd } = useMessageScroller();
+  const { end } = useMessageScrollerScrollable();
+
+  useLayoutEffect(() => {
+    if (!active || end) return;
+
+    scrollToEnd({ behavior: "auto" });
+  }, [active, end, scrollToEnd, tick]);
+
+  return null;
+}
+
 export function ConversationTranscript({
   messages,
+  pendingUserContent,
   streamingContent,
+  isStreaming = false,
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadOlder,
 }: ConversationTranscriptProps) {
+  const showPendingUser =
+    Boolean(pendingUserContent) &&
+    !messages.some(
+      (message) =>
+        message.role === "USER" && message.content === pendingUserContent,
+    );
+
+  const lastAssistant = [...messages]
+    .reverse()
+    .find((message) => message.role !== "USER");
+
+  const showStreaming =
+    (isStreaming || Boolean(streamingContent)) &&
+    !(
+      lastAssistant &&
+      streamingContent &&
+      lastAssistant.content === streamingContent
+    );
+
   return (
     <div className="min-h-0 flex-1 overflow-hidden">
-      <MessageScrollerProvider>
+      <MessageScrollerProvider autoScroll>
         {onLoadOlder ? (
           <LoadOlderOnStart
             enabled={hasNextPage && !isFetchingNextPage}
             onLoadOlder={onLoadOlder}
           />
         ) : null}
+
+        <FollowBottomOnUpdate
+          active={showPendingUser || showStreaming}
+          tick={streamingContent}
+        />
 
         <MessageScroller>
           {isFetchingNextPage ? (
@@ -124,22 +172,49 @@ export function ConversationTranscript({
                 );
               })}
 
-              {streamingContent ? (
-                <Message align="start" className="mb-6">
-                  <MessageContent className="max-w-[min(100%,42rem)]">
-                    <Bubble variant="ghost" align="start">
-                      <BubbleContent>
-                        <div className="typeset typeset-chat">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {streamingContent}
-                          </ReactMarkdown>
-                        </div>
-                      </BubbleContent>
-                    </Bubble>
-                  </MessageContent>
-                </Message>
+              {showPendingUser ? (
+                <MessageScrollerItem
+                  messageId="pending-user"
+                  scrollAnchor
+                >
+                  <Message align="end" className="mb-6">
+                    <MessageContent className="max-w-[75%]">
+                      <Bubble variant="muted" align="end">
+                        <BubbleContent>
+                          <p className="whitespace-pre-wrap">
+                            {pendingUserContent}
+                          </p>
+                        </BubbleContent>
+                      </Bubble>
+                    </MessageContent>
+                  </Message>
+                </MessageScrollerItem>
               ) : null}
-              
+
+              {showStreaming ? (
+                <MessageScrollerItem
+                  messageId="streaming"
+                  className="[content-visibility:visible]"
+                >
+                  <Message align="start" className="mb-6">
+                    <MessageContent className="max-w-[min(100%,42rem)]">
+                      <Bubble variant="ghost" align="start">
+                        <BubbleContent>
+                          {streamingContent ? (
+                            <div className="typeset typeset-chat">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {streamingContent}
+                              </ReactMarkdown>
+                            </div>
+                          ) : (
+                            <span className="inline-block h-4 w-1 animate-pulse bg-foreground/70" />
+                          )}
+                        </BubbleContent>
+                      </Bubble>
+                    </MessageContent>
+                  </Message>
+                </MessageScrollerItem>
+              ) : null}
             </MessageScrollerContent>
           </MessageScrollerViewport>
 
