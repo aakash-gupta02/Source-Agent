@@ -1,6 +1,6 @@
 import { api } from "@/lib/api/client";
 import type { ApiMessageResponse, ApiResponse } from "@/shared/types/api";
-import type { ConversationDto, ConversationListDto } from "@repo/shared/types";
+import type { ConversationDetailDto, ConversationDto, ConversationListDto } from "@repo/shared/types";
 import type {
   CreateConversationInput,
   UpdateConversationInput,
@@ -9,7 +9,7 @@ import type {
 const BASE = "/conversation";
 
 type CreateConversationResponse = ApiResponse<ConversationDto>;
-type GetConversationResponse = ApiResponse<ConversationDto>;
+type GetConversationResponse = ApiResponse<ConversationDetailDto>;
 type GetConversationListResponse = ApiResponse<ConversationListDto[]>;
 type UpdateConversationResponse = ApiResponse<ConversationDto>;
 type DeleteConversationResponse = ApiMessageResponse;

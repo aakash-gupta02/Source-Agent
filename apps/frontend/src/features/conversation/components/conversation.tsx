@@ -125,6 +125,7 @@ export function Conversation({ conversationId }: ConversationProps) {
             onChange={setMessage}
             onSubmit={handleSubmit}
             disabled={isStreaming}
+            conversation={conversation}
           />
         </div>
       </div>

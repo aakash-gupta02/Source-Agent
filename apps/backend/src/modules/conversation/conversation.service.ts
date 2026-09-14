@@ -6,7 +6,11 @@ import {
   CreateConversationInput,
   UpdateConversationInput,
 } from "@repo/shared/validations";
-import { ConversationDto, ConversationListDto } from "@repo/shared/types";
+import type {
+  ConversationDetailDto,
+  ConversationDto,
+  ConversationListDto,
+} from "@repo/shared/types";
 import { db } from "@repo/db/client";
 import { AuthContext } from "../../shared/types/auth.type.js";
 
@@ -85,9 +89,28 @@ export const deleteConversationService = async (
 export const getConversationService = async (
   id: string,
   userId: AuthContext["userId"],
-): Promise<ConversationDto> => {
+): Promise<ConversationDetailDto> => {
   const conversation = await Conversation.findFirst({
-    where: { id, userId },
+    where: {
+      id,
+      userId,
+    },
+    include: {
+      databaseConnection: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      aiProvider: {
+        select: {
+          id: true,
+          name: true,
+          provider: true,
+          model: true,
+        },
+      },
+    },
   });
 
   if (!conversation) {
