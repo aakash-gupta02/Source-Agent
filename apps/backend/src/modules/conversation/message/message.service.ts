@@ -126,6 +126,8 @@ export const userCreateMessageService = async function* (
 
     const [messageChunk] = data;
 
+    if (messageChunk.type !== "ai") continue;
+
     if (typeof messageChunk.content !== "string") continue;
 
     const content = messageChunk.content;
