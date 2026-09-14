@@ -26,6 +26,7 @@ interface ConversationMessage {
 
 interface ConversationTranscriptProps {
   messages: ConversationMessage[];
+  streamingContent?: string;
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   onLoadOlder?: () => void;
@@ -60,6 +61,7 @@ function LoadOlderOnStart({
 
 export function ConversationTranscript({
   messages,
+  streamingContent,
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadOlder,
@@ -121,6 +123,23 @@ export function ConversationTranscript({
                   </MessageScrollerItem>
                 );
               })}
+
+              {streamingContent ? (
+                <Message align="start" className="mb-6">
+                  <MessageContent className="max-w-[min(100%,42rem)]">
+                    <Bubble variant="ghost" align="start">
+                      <BubbleContent>
+                        <div className="typeset typeset-chat">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {streamingContent}
+                          </ReactMarkdown>
+                        </div>
+                      </BubbleContent>
+                    </Bubble>
+                  </MessageContent>
+                </Message>
+              ) : null}
+              
             </MessageScrollerContent>
           </MessageScrollerViewport>
 

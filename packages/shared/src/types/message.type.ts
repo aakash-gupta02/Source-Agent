@@ -10,3 +10,16 @@ export interface MessageListDto {
   messages: MessageDto[];
   meta: CursorPaginationMeta;
 }
+
+export type StreamEvent =
+  | {
+      type: "message";
+      content: string;
+    }
+  | {
+      type: "done";
+    }
+  | {
+      type: "error";
+      message: string;
+    };

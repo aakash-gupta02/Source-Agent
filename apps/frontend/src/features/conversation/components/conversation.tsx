@@ -6,10 +6,8 @@ import { ConversationComposer } from "./conversation-composer";
 import { ConversationTranscript } from "./conversation-transcript";
 
 import { useConversation } from "@/features/conversation/hooks";
-import {
-  useMessages,
-  useCreateMessage,
-} from "@/features/conversation/message/hooks";
+import { useMessages } from "@/features/conversation/message/hooks";
+import { messageApi } from "@/features/conversation/message/api";
 
 interface ConversationProps {
   conversationId: string;
@@ -17,6 +15,8 @@ interface ConversationProps {
 
 export function Conversation({ conversationId }: ConversationProps) {
   const [message, setMessage] = useState("");
+  const [streamingContent, setStreamingContent] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
 
   const {
     data: conversation,
@@ -29,11 +29,9 @@ export function Conversation({ conversationId }: ConversationProps) {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    refetch,
   } = useMessages(conversationId);
 
-  const createMessage = useCreateMessage(conversationId);
-
-  // Pages arrive newest-first; reverse so the transcript stays chronological.
   const messages = useMemo(
     () =>
       [...(messageData?.pages ?? [])]
@@ -48,21 +46,43 @@ export function Conversation({ conversationId }: ConversationProps) {
     void fetchNextPage();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const handleSubmit = (content: string) => {
-    createMessage.mutate(
-      { content },
-      {
-        onSuccess: () => {
-          setMessage("");
+  const handleSubmit = async (content: string) => {
+    if (isStreaming) return;
+
+    setMessage("");
+    setStreamingContent("");
+    setIsStreaming(true);
+
+    try {
+      await messageApi.stream(
+        conversationId,
+        { content },
+        (event) => {
+          if (event.type === "message") {
+            setStreamingContent((previous) => previous + event.content);
+          }
+
+          if (event.type === "error") {
+            throw new Error(event.message);
+          }
         },
-      },
-    );
+      );
+
+      await refetch();
+      setStreamingContent("");
+    } catch (error) {
+      console.error("Failed to stream message:", error);
+    } finally {
+      setIsStreaming(false);
+    }
   };
 
   if (conversationLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading conversation...</p>
+        <p className="text-sm text-muted-foreground">
+          Loading conversation...
+        </p>
       </div>
     );
   }
@@ -70,7 +90,9 @@ export function Conversation({ conversationId }: ConversationProps) {
   if (conversationError || !conversation) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-muted-foreground">Conversation not found.</p>
+        <p className="text-sm text-muted-foreground">
+          Conversation not found.
+        </p>
       </div>
     );
   }
@@ -85,6 +107,7 @@ export function Conversation({ conversationId }: ConversationProps) {
 
       <ConversationTranscript
         messages={messages}
+        streamingContent={streamingContent}
         hasNextPage={Boolean(hasNextPage)}
         isFetchingNextPage={isFetchingNextPage}
         onLoadOlder={handleLoadOlder}
@@ -96,7 +119,7 @@ export function Conversation({ conversationId }: ConversationProps) {
             value={message}
             onChange={setMessage}
             onSubmit={handleSubmit}
-            disabled={createMessage.isPending}
+            disabled={isStreaming}
           />
         </div>
       </div>
