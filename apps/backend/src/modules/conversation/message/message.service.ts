@@ -6,7 +6,7 @@ import {
   PaginationQuery,
   UserCreateMessageInput,
 } from "@repo/shared/validations";
-import { MessageDto, MessageListDto } from "@repo/shared/types";
+import { MessageDto, MessageListDto, StreamEvent } from "@repo/shared/types";
 import { db } from "@repo/db/client";
 import { AuthContext } from "../../../shared/types/auth.type.js";
 import { MessageRole, Prisma } from "@repo/db";
@@ -28,11 +28,11 @@ const Message = db.message;
 const Conversation = db.conversation;
 
 // User create a message
-export const userCreateMessageService = async (
+export const userCreateMessageService = async function* (
   payload: UserCreateMessageInput,
   userId: AuthContext["userId"],
   conversationId: string,
-): Promise<MessageDto> => {
+): AsyncGenerator<StreamEvent> {
   const conversation = await Conversation.findFirst({
     where: {
       id: conversationId,
@@ -59,8 +59,6 @@ export const userCreateMessageService = async (
   if (!conversation) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Conversation not found");
   }
-
-  // TODO: title check & AI generated title
 
   await Message.create({
     data: {
@@ -119,27 +117,34 @@ export const userCreateMessageService = async (
     pool,
   });
 
-  const result = await agent.invoke(conversationId, messages);
-
   const stream = await agent.stream(conversationId, messages);
 
-  for await (const chunk of stream) {
-    console.log("chunk");
-    console.dir(chunk, { depth: null });
+  let assistantContent = "";
+
+  for await (const [mode, data] of stream) {
+    if (mode !== "messages") continue;
+
+    const [messageChunk] = data;
+
+    if (typeof messageChunk.content !== "string") continue;
+
+    const content = messageChunk.content;
+
+    if (!content) continue;
+
+    assistantContent += content;
+
+    yield {
+      type: "message",
+      content,
+    };
   }
 
-  const lastMessage = result.messages.at(-1);
+  await createAssistantMessageService(conversationId, assistantContent);
 
-  if (!lastMessage || typeof lastMessage.content !== "string") {
-    throw new Error("Invalid assistant response");
-  }
-
-  const assistantMessage = await createAssistantMessageService(
-    conversationId,
-    lastMessage.content,
-  );
-
-  return assistantMessage;
+  yield {
+    type: "done",
+  };
 };
 
 export const listMessagesService = async (

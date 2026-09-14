@@ -12,7 +12,6 @@ import {
   PaginationQuery,
   UserCreateMessageInput,
 } from "@repo/shared/validations";
-import { StreamEvent } from "@repo/shared/types";
 
 export const createMessage = CatchAsync(async (req: Request, res: Response) => {
   const { userId } = req.user;
@@ -20,57 +19,18 @@ export const createMessage = CatchAsync(async (req: Request, res: Response) => {
     req.params as unknown as ConversationIdParamsInput;
   const content: UserCreateMessageInput = req.body;
 
-  if (content.content === "__SSE_TEST__") {
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
+  // SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
 
-    const chunks = [
-      "The user",
-      " with the",
-      " most completed",
-      " orders is ",
-      "**Aakash**",
-      ", who has",
-      " placed **2**",
-      " completed orders",
-      " with a total amount",
-      " of **2000.00**.",
-    ];
+  const stream = userCreateMessageService(content, userId, conversationId);
 
-    for (const chunk of chunks) {
-      const event: StreamEvent = {
-        type: "message",
-        content: chunk,
-      };
-
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-
-    const doneEvent: StreamEvent = {
-      type: "done",
-    };
-
-    res.write(`data: ${JSON.stringify(doneEvent)}\n\n`);
-    res.end();
-
-    return;
+  for await (const event of stream) {
+    res.write(`data: ${JSON.stringify(event)}\n\n`);
   }
 
-  const message = await userCreateMessageService(
-    content,
-    userId,
-    conversationId,
-  );
-
-  sendResponse(
-    res,
-    StatusCodes.CREATED,
-    "Message created successfully",
-    message,
-  );
+  res.end();
 });
 
 export const listMessages = CatchAsync(async (req: Request, res: Response) => {
