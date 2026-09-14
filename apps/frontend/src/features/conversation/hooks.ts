@@ -39,8 +39,7 @@ export function useCreateConversation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: CreateConversationInput) =>
-      conversationApi.create(body),
+    mutationFn: (body: CreateConversationInput) => conversationApi.create(body),
     onSuccess: (response) => {
       queryClient.setQueryData(
         conversationKeys.detail(response.data.id),
@@ -59,8 +58,12 @@ export function useUpdateConversation(id: string) {
   return useMutation({
     mutationFn: (body: UpdateConversationInput) =>
       conversationApi.update(id, body),
-    onSuccess: (response) => {
-      queryClient.setQueryData(conversationKeys.detail(id), response.data);
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: conversationKeys.detail(id),
+      });
+
       void queryClient.invalidateQueries({
         queryKey: conversationKeys.lists(),
       });

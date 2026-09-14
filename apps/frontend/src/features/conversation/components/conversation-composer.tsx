@@ -5,6 +5,12 @@ import { ArrowUp, BrainCircuit, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationDetailDto } from "@repo/shared/types";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ConversationAIProvider } from "./ConversationAIProvider";
 
 interface ConversationComposerProps {
   value: string;
@@ -50,21 +56,29 @@ export function ConversationComposer({
       {conversation ? (
         <div className="flex items-center justify-between px-1 pb-1">
           <div className="flex min-w-0 items-center gap-1">
-            <div className="flex min-w-0 items-center gap-1.5 px-2 py-1.5 text-xs text-muted-foreground">
-              <Database className="size-3.5 shrink-0" />
-              <span className="truncate">
-                {conversation.databaseConnection.name}
-              </span>
-            </div>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    className="flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground"
+                  />
+                }
+              >
+                <Database className="size-3.5 shrink-0" />
+                <span className="truncate">
+                  {conversation.databaseConnection.name}
+                </span>
+              </TooltipTrigger>
+
+              <TooltipContent>
+                <p>DB source can&apos;t be changed after creation</p>
+              </TooltipContent>
+            </Tooltip>
 
             <div className="h-3.5 w-px bg-border" />
 
-            <div className="flex min-w-0 items-center gap-1.5 px-2 py-1.5 text-xs text-muted-foreground">
-              <BrainCircuit className="size-3.5 shrink-0" />
-              <span className="truncate">
-                {conversation.aiProvider.name} · {conversation.aiProvider.model}
-              </span>
-            </div>
+            <ConversationAIProvider conversation={conversation} />
           </div>
 
           <Button
