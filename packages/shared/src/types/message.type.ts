@@ -31,3 +31,20 @@ export type StreamEvent =
       type: "error";
       message: string;
     };
+    
+//#region Message Metadata
+export interface ToolExecutionMetadata {
+  name: string;
+  durationMs?: number;
+}
+
+export interface ModelMetadata {
+  provider: string;
+  name: string;
+}
+//#endregion Message Metadata
+
+export interface MessageMetadata {
+  model?: ModelMetadata;
+  tools?: ToolExecutionMetadata[];
+}
