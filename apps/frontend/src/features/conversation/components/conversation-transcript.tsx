@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/message-scroller";
 
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
+import { toolLabels } from "../message/constant";
+import { Check, LoaderCircle } from "lucide-react";
 
 interface ConversationMessage {
   id: string;
@@ -25,11 +27,16 @@ interface ConversationMessage {
   content: string;
 }
 
+interface ToolActivity {
+  tool: string;
+  status: "running" | "completed";
+}
 interface ConversationTranscriptProps {
   messages: ConversationMessage[];
   pendingUserContent?: string;
   streamingContent?: string;
   isStreaming?: boolean;
+  toolActivity?: ToolActivity[];
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   onLoadOlder?: () => void;
@@ -86,6 +93,7 @@ export function ConversationTranscript({
   pendingUserContent,
   streamingContent,
   isStreaming = false,
+  toolActivity = [],
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadOlder,
@@ -173,10 +181,7 @@ export function ConversationTranscript({
               })}
 
               {showPendingUser ? (
-                <MessageScrollerItem
-                  messageId="pending-user"
-                  scrollAnchor
-                >
+                <MessageScrollerItem messageId="pending-user" scrollAnchor>
                   <Message align="end" className="mb-6">
                     <MessageContent className="max-w-[75%]">
                       <Bubble variant="muted" align="end">
@@ -188,6 +193,36 @@ export function ConversationTranscript({
                       </Bubble>
                     </MessageContent>
                   </Message>
+                </MessageScrollerItem>
+              ) : null}
+
+              {toolActivity.length > 0 ? (
+                <MessageScrollerItem
+                  messageId="tool-activity"
+                  className="[content-visibility:visible]"
+                >
+                  <div className="mb-4 ml-1 space-y-1 text-sm text-muted-foreground">
+                    {toolActivity.map((item, index) => {
+                      const label = toolLabels[item.tool] ?? item.tool;
+
+                      return (
+                        <p
+                          key={`${item.tool}-${index}`}
+                          className="flex items-center gap-2"
+                        >
+                          {item.status === "running" ? (
+                            <LoaderCircle className="size-3 animate-spin" />
+                          ) : (
+                            <Check className="size-3" />
+                          )}
+
+                          <span>
+                            {item.status === "running" ? `${label}...` : label}
+                          </span>
+                        </p>
+                      );
+                    })}
+                  </div>
                 </MessageScrollerItem>
               ) : null}
 

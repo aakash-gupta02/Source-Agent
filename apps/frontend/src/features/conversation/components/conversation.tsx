@@ -19,6 +19,13 @@ export function Conversation({ conversationId }: ConversationProps) {
   const [streamingContent, setStreamingContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
 
+  const [toolActivity, setToolActivity] = useState<
+    {
+      tool: string;
+      status: "running" | "completed";
+    }[]
+  >([]);
+
   const {
     data: conversation,
     isLoading: conversationLoading,
@@ -53,6 +60,7 @@ export function Conversation({ conversationId }: ConversationProps) {
     setMessage("");
     setPendingUserContent(content);
     setStreamingContent("");
+    setToolActivity([]);
     setIsStreaming(true);
 
     try {
@@ -60,8 +68,42 @@ export function Conversation({ conversationId }: ConversationProps) {
         conversationId,
         { content },
         (event) => {
+          if (event.type === "tool_start") {
+            setToolActivity((previous) => [
+              ...previous,
+              {
+                tool: event.tool,
+                status: "running",
+              },
+            ]);
+          }
+
+          if (event.type === "tool_end") {
+            setToolActivity((previous) =>
+              previous.map((item, index) => {
+                if (
+                  index ===
+                    previous.findIndex(
+                      (tool) =>
+                        tool.tool === event.tool &&
+                        tool.status === "running",
+                    )
+                ) {
+                  return {
+                    ...item,
+                    status: "completed",
+                  };
+                }
+
+                return item;
+              }),
+            );
+          }
+
           if (event.type === "message") {
-            setStreamingContent((previous) => previous + event.content);
+            setStreamingContent(
+              (previous) => previous + event.content,
+            );
           }
 
           if (event.type === "error") {
@@ -70,9 +112,11 @@ export function Conversation({ conversationId }: ConversationProps) {
         },
       );
 
-      await refetch();
-      setStreamingContent("");
-      setPendingUserContent("");
+      // await refetch();
+
+      // setStreamingContent("");
+      // setPendingUserContent("");
+      // setToolActivity([]);
     } catch (error) {
       console.error("Failed to stream message:", error);
     } finally {
@@ -113,6 +157,7 @@ export function Conversation({ conversationId }: ConversationProps) {
         pendingUserContent={pendingUserContent}
         streamingContent={streamingContent}
         isStreaming={isStreaming}
+        toolActivity={toolActivity}
         hasNextPage={Boolean(hasNextPage)}
         isFetchingNextPage={isFetchingNextPage}
         onLoadOlder={handleLoadOlder}
