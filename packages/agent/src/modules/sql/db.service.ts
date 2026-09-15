@@ -210,11 +210,11 @@ export const createSqlTools = (pool: Pool) => {
             kcu.column_name,
             ccu.table_name AS foreign_table_name,
             ccu.column_name AS foreign_column_name
-          FROM table_constraints AS tc
-          JOIN key_column_usage AS kcu
+          FROM information_schema.table_constraints AS tc
+          JOIN information_schema.key_column_usage AS kcu
             ON tc.constraint_name = kcu.constraint_name
             AND tc.table_schema = kcu.table_schema
-          JOIN constraint_column_usage AS ccu
+          JOIN information_schema.constraint_column_usage AS ccu
             ON tc.constraint_name = ccu.constraint_name
             AND tc.table_schema = ccu.table_schema
           WHERE tc.constraint_type = 'FOREIGN KEY'
@@ -225,8 +225,8 @@ export const createSqlTools = (pool: Pool) => {
           SELECT
             tc.table_name,
             kcu.column_name
-          FROM table_constraints AS tc
-          JOIN key_column_usage AS kcu
+          FROM information_schema.table_constraints AS tc
+          JOIN information_schema.key_column_usage AS kcu
             ON tc.constraint_name = kcu.constraint_name
             AND tc.table_schema = kcu.table_schema
           WHERE tc.constraint_type = 'PRIMARY KEY'
@@ -272,51 +272,51 @@ export const createSqlTools = (pool: Pool) => {
       try {
         const columns = await pool.query(
           `
-            SELECT
-              table_name,
-              column_name,
-              data_type
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = ANY($1)
-            ORDER BY table_name, ordinal_position;
+          SELECT
+            table_name,
+            column_name,
+            data_type
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = ANY($1)
+          ORDER BY table_name, ordinal_position;
           `,
           [tables],
         );
 
         const primaryKeys = await pool.query(
           `
-            SELECT
-              tc.table_name,
-              kcu.column_name
-            FROM table_constraints AS tc
-            JOIN key_column_usage AS kcu
-              ON tc.constraint_name = kcu.constraint_name
-              AND tc.table_schema = kcu.table_schema
-            WHERE tc.constraint_type = 'PRIMARY KEY'
-              AND tc.table_schema = 'public'
-              AND tc.table_name = ANY($1);
+          SELECT
+            tc.table_name,
+            kcu.column_name
+          FROM information_schema.table_constraints AS tc
+          JOIN information_schema.key_column_usage AS kcu
+            ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
+          WHERE tc.constraint_type = 'PRIMARY KEY'
+            AND tc.table_schema = 'public'
+            AND tc.table_name = ANY($1);
           `,
           [tables],
         );
 
         const foreignKeys = await pool.query(
           `
-            SELECT
-              tc.table_name,
-              kcu.column_name,
-              ccu.table_name AS foreign_table_name,
-              ccu.column_name AS foreign_column_name
-            FROM table_constraints AS tc
-            JOIN key_column_usage AS kcu
-              ON tc.constraint_name = kcu.constraint_name
-              AND tc.table_schema = kcu.table_schema
-            JOIN constraint_column_usage AS ccu
-              ON tc.constraint_name = ccu.constraint_name
-              AND tc.table_schema = ccu.table_schema
-            WHERE tc.constraint_type = 'FOREIGN KEY'
-              AND tc.table_schema = 'public'
-              AND tc.table_name = ANY($1);
+          SELECT
+            tc.table_name,
+            kcu.column_name,
+            ccu.table_name AS foreign_table_name,
+            ccu.column_name AS foreign_column_name
+          FROM information_schema.table_constraints AS tc
+          JOIN information_schema.key_column_usage AS kcu
+            ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
+          JOIN information_schema.constraint_column_usage AS ccu
+            ON tc.constraint_name = ccu.constraint_name
+            AND tc.table_schema = ccu.table_schema
+          WHERE tc.constraint_type = 'FOREIGN KEY'
+            AND tc.table_schema = 'public'
+            AND tc.table_name = ANY($1);
           `,
           [tables],
         );
