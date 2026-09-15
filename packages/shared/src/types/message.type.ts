@@ -6,8 +6,12 @@ export interface MessageDto extends Pick<
   "id" | "conversationId" | "role" | "content" | "createdAt"
 > {}
 
+export interface MessageDtoWithMetadata extends MessageDto {
+  metadata?: MessageMetadata;
+}
+
 export interface MessageListDto {
-  messages: MessageDto[];
+  messages: MessageDtoWithMetadata[];
   meta: CursorPaginationMeta;
 }
 
@@ -31,7 +35,7 @@ export type StreamEvent =
       type: "error";
       message: string;
     };
-    
+
 //#region Message Metadata
 export interface ToolExecutionMetadata {
   name: string;

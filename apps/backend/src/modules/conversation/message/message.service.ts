@@ -6,7 +6,12 @@ import {
   PaginationQuery,
   UserCreateMessageInput,
 } from "@repo/shared/validations";
-import { MessageDto, MessageListDto, StreamEvent } from "@repo/shared/types";
+import {
+  MessageDto,
+  MessageListDto,
+  MessageMetadata,
+  StreamEvent,
+} from "@repo/shared/types";
 import { db } from "@repo/db/client";
 import { AuthContext } from "../../../shared/types/auth.type.js";
 import { MessageRole, Prisma } from "@repo/db";
@@ -34,6 +39,7 @@ export const userCreateMessageService = async function* (
   userId: AuthContext["userId"],
   conversationId: string,
 ): AsyncGenerator<StreamEvent> {
+  
   const conversation = await Conversation.findFirst({
     where: {
       id: conversationId,
@@ -121,19 +127,31 @@ export const userCreateMessageService = async function* (
   const stream = await agent.stream(conversationId, messages);
 
   let assistantContent = "";
+  const toolExecutions: {
+    id?: string;
+    name: string;
+    startedAt: number;
+    durationMs?: number;
+  }[] = [];
 
   for await (const [mode, data] of stream) {
     if (mode !== "messages") continue;
-  
+
     console.log("========== STREAM CHUNK ==========");
     console.log("MODE: messages");
     console.dir([mode, data], { depth: null });
-  
+
     const [messageChunk] = data;
 
     // AI requested a tool
     if (AIMessage.isInstance(messageChunk) && messageChunk.tool_calls?.length) {
       for (const toolCall of messageChunk.tool_calls) {
+        toolExecutions.push({
+          id: toolCall.id,
+          name: toolCall.name,
+          startedAt: Date.now(),
+        });
+
         yield {
           type: "tool_start",
           tool: toolCall.name,
@@ -143,6 +161,16 @@ export const userCreateMessageService = async function* (
 
     // Tool completed
     if (ToolMessage.isInstance(messageChunk)) {
+      const execution = toolExecutions.find((tool) =>
+        tool.id
+          ? tool.id === messageChunk.tool_call_id
+          : tool.name === messageChunk.name,
+      );
+
+      if (execution) {
+        execution.durationMs = Date.now() - execution.startedAt;
+      }
+
       if (messageChunk.name) {
         yield {
           type: "tool_end",
@@ -155,22 +183,39 @@ export const userCreateMessageService = async function* (
 
     // Normal AI response
     if (!AIMessage.isInstance(messageChunk)) continue;
-  
+
     if (typeof messageChunk.content !== "string") continue;
-  
+
     const content = messageChunk.content;
-  
+
     if (!content) continue;
-  
+
     assistantContent += content;
-  
+
     yield {
       type: "message",
       content,
     };
   }
 
-  await createAssistantMessageService(conversationId, assistantContent);
+  const metadata: MessageMetadata = {
+    model: {
+      provider: conversation.aiProvider.provider,
+      name: conversation.aiProvider.model,
+    },
+    ...(toolExecutions.length > 0 && {
+      tools: toolExecutions.map((tool) => ({
+        name: tool.name,
+        durationMs: tool.durationMs,
+      })),
+    }),
+  };
+
+  await createAssistantMessageService(
+    conversationId,
+    assistantContent,
+    metadata,
+  );
 
   yield {
     type: "done",
@@ -233,12 +278,14 @@ export const listMessagesService = async (
 const createAssistantMessageService = async (
   conversationId: string,
   content: string,
+  metadata?: MessageMetadata,
 ): Promise<MessageDto> => {
   return Message.create({
     data: {
       conversationId,
       role: MessageRole.ASSISTANT,
       content,
+      metadata,
     },
   });
 };
