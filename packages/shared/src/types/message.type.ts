@@ -13,6 +13,14 @@ export interface MessageListDto {
 
 export type StreamEvent =
   | {
+      type: "tool_start";
+      tool: string;
+    }
+  | {
+      type: "tool_end";
+      tool: string;
+    }
+  | {
       type: "message";
       content: string;
     }

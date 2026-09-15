@@ -160,7 +160,7 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
         configurable: {
           thread_id: conversationId,
         },
-        streamMode: ["messages", "updates"],
+        streamMode: ["messages"],
       },
     );
   };
@@ -178,8 +178,6 @@ export const generateTitle = async (llm: BaseChatModel, content: string) => {
     new SystemMessage(systemPromptForTitle),
     new HumanMessage(content),
   ]);
-
-  console.log("response", response);
 
   return response.title;
 };

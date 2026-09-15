@@ -13,6 +13,7 @@ import { MessageRole, Prisma } from "@repo/db";
 import { encodeCursor } from "../../../shared/utils/cursor.js";
 import { buildCursorFilter } from "../../../shared/pagination/buildCursorFilter.js";
 import { decrypt } from "../../../shared/utils/encryption/encryption.js";
+import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import {
   createModel,
   createPostgresConnection,
@@ -123,19 +124,46 @@ export const userCreateMessageService = async function* (
 
   for await (const [mode, data] of stream) {
     if (mode !== "messages") continue;
-
+  
+    console.log("========== STREAM CHUNK ==========");
+    console.log("MODE: messages");
+    console.dir([mode, data], { depth: null });
+  
     const [messageChunk] = data;
 
-    if (messageChunk.type !== "ai") continue;
+    // AI requested a tool
+    if (AIMessage.isInstance(messageChunk) && messageChunk.tool_calls?.length) {
+      for (const toolCall of messageChunk.tool_calls) {
+        yield {
+          type: "tool_start",
+          tool: toolCall.name,
+        };
+      }
+    }
 
+    // Tool completed
+    if (ToolMessage.isInstance(messageChunk)) {
+      if (messageChunk.name) {
+        yield {
+          type: "tool_end",
+          tool: messageChunk.name,
+        };
+      }
+
+      continue;
+    }
+
+    // Normal AI response
+    if (!AIMessage.isInstance(messageChunk)) continue;
+  
     if (typeof messageChunk.content !== "string") continue;
-
+  
     const content = messageChunk.content;
-
+  
     if (!content) continue;
-
+  
     assistantContent += content;
-
+  
     yield {
       type: "message",
       content,
