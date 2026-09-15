@@ -112,11 +112,11 @@ export function Conversation({ conversationId }: ConversationProps) {
         },
       );
 
-      // await refetch();
+      await refetch();
 
-      // setStreamingContent("");
-      // setPendingUserContent("");
-      // setToolActivity([]);
+      setStreamingContent("");
+      setPendingUserContent("");
+      setToolActivity([]);
     } catch (error) {
       console.error("Failed to stream message:", error);
     } finally {

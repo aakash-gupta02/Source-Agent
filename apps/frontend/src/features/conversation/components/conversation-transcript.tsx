@@ -3,9 +3,9 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Check, LoaderCircle } from "lucide-react";
 
 import { Message, MessageContent } from "@/components/ui/message";
-
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -16,23 +16,20 @@ import {
   useMessageScroller,
   useMessageScrollerScrollable,
 } from "@/components/ui/message-scroller";
-
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { toolLabels } from "../message/constant";
-import { Check, LoaderCircle } from "lucide-react";
-
-interface ConversationMessage {
-  id: string;
-  role: string;
-  content: string;
-}
+import {
+  MessageDtoWithMetadata,
+  ToolExecutionMetadata,
+} from "@repo/shared/types";
 
 interface ToolActivity {
   tool: string;
   status: "running" | "completed";
 }
+
 interface ConversationTranscriptProps {
-  messages: ConversationMessage[];
+  messages: MessageDtoWithMetadata[];
   pendingUserContent?: string;
   streamingContent?: string;
   isStreaming?: boolean;
@@ -86,6 +83,26 @@ function FollowBottomOnUpdate({
   }, [active, end, scrollToEnd, tick]);
 
   return null;
+}
+
+function ToolExecutionList({ tools }: { tools?: ToolExecutionMetadata[] }) {
+  if (!tools?.length) return null;
+
+  return (
+    <div className="mb-4 ml-1 space-y-1 text-sm text-muted-foreground">
+      {tools.map((tool, index) => {
+        const label = toolLabels[tool.name] ?? tool.name;
+
+        return (
+          <p key={`${tool.name}-${index}`} className="flex items-center gap-2">
+            <Check className="size-3" />
+
+            <span>{label}</span>
+          </p>
+        );
+      })}
+    </div>
+  );
 }
 
 export function ConversationTranscript({
@@ -150,6 +167,10 @@ export function ConversationTranscript({
                     messageId={message.id}
                     scrollAnchor={isUser}
                   >
+                    {!isUser ? (
+                      <ToolExecutionList tools={message.metadata?.tools} />
+                    ) : null}
+
                     <Message align={isUser ? "end" : "start"} className="mb-6">
                       <MessageContent
                         className={
