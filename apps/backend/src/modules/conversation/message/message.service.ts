@@ -8,6 +8,7 @@ import {
 } from "@repo/shared/validations";
 import {
   MessageDto,
+  MessageDtoWithMetadata,
   MessageListDto,
   MessageMetadata,
   StreamEvent,
@@ -32,6 +33,35 @@ import {
 
 const Message = db.message;
 const Conversation = db.conversation;
+
+//#region helper
+const toMessageDtoWithMetadata = (message: {
+  id: string;
+  conversationId: string;
+  role: MessageRole;
+  content: string;
+  createdAt: Date;
+  metadata: Prisma.JsonValue;
+}): MessageDtoWithMetadata => ({
+  id: message.id,
+  conversationId: message.conversationId,
+  role: message.role,
+  content: message.content,
+  createdAt: message.createdAt,
+  metadata: toMessageMetadata(message.metadata),
+});
+
+const toMessageMetadata = (
+  metadata: Prisma.JsonValue,
+): MessageMetadata | undefined => {
+  if (metadata == null || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return undefined;
+  }
+
+  return metadata as MessageMetadata;
+};
+
+//#endregion
 
 // User create a message
 export const userCreateMessageService = async function* (
@@ -267,7 +297,7 @@ export const listMessagesService = async (
     : null;
 
   return {
-    messages,
+    messages: messages.map(toMessageDtoWithMetadata),
     meta: {
       hasNextPage,
       nextCursor,
@@ -285,7 +315,9 @@ const createAssistantMessageService = async (
       conversationId,
       role: MessageRole.ASSISTANT,
       content,
-      metadata,
+      metadata: metadata as Prisma.InputJsonValue | undefined,
     },
   });
 };
+
+
