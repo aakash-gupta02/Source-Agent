@@ -15,6 +15,11 @@ export interface MessageListDto {
   meta: CursorPaginationMeta;
 }
 
+export interface SqlApproval {
+  type: "sql_approval";
+  sql: string;
+}
+
 export type StreamEvent =
   | {
       type: "tool_start";
@@ -24,6 +29,7 @@ export type StreamEvent =
       type: "tool_end";
       tool: string;
     }
+  | { type: "approval_required"; approval: SqlApproval }
   | {
       type: "message";
       content: string;

@@ -54,7 +54,11 @@ const toMessageDtoWithMetadata = (message: {
 const toMessageMetadata = (
   metadata: Prisma.JsonValue,
 ): MessageMetadata | undefined => {
-  if (metadata == null || typeof metadata !== "object" || Array.isArray(metadata)) {
+  if (
+    metadata == null ||
+    typeof metadata !== "object" ||
+    Array.isArray(metadata)
+  ) {
     return undefined;
   }
 
@@ -69,7 +73,6 @@ export const userCreateMessageService = async function* (
   userId: AuthContext["userId"],
   conversationId: string,
 ): AsyncGenerator<StreamEvent> {
-  
   const conversation = await Conversation.findFirst({
     where: {
       id: conversationId,
@@ -165,11 +168,30 @@ export const userCreateMessageService = async function* (
   }[] = [];
 
   for await (const [mode, data] of stream) {
-    if (mode !== "messages") continue;
-
     console.log("========== STREAM CHUNK ==========");
-    console.log("MODE: messages");
-    console.dir([mode, data], { depth: null });
+    console.log("MODE:", mode);
+    console.dir(data, { depth: null });
+  
+    if (mode === "updates") {
+      const interrupts = data.__interrupt__;
+  
+      if (interrupts?.length) {
+        for (const interrupt of interrupts) {
+          const approval = interrupt.value;
+  
+          if (approval?.type === "sql_approval") {
+            yield {
+              type: "approval_required",
+              approval,
+            };
+          }
+        }
+      }
+  
+      continue;
+    }
+
+    if (mode !== "messages") continue;
 
     const [messageChunk] = data;
 
@@ -319,5 +341,3 @@ const createAssistantMessageService = async (
     },
   });
 };
-
-

@@ -8,6 +8,7 @@ import {
 } from "@langchain/core/messages";
 import {
   Annotation,
+  Command,
   END,
   MemorySaver,
   START,
@@ -160,6 +161,25 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
         configurable: {
           thread_id: conversationId,
         },
+        streamMode: ["messages", "updates"],
+      },
+    );
+  };
+
+  const resume = async (
+    conversationId: string,
+    response: {
+      approved: boolean;
+    },
+  ) => {
+    return graph.stream(
+      new Command({
+        resume: response,
+      }),
+      {
+        configurable: {
+          thread_id: conversationId,
+        },
         streamMode: ["messages"],
       },
     );
@@ -168,6 +188,7 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
   return {
     invoke,
     stream,
+    resume,
   };
 };
 
