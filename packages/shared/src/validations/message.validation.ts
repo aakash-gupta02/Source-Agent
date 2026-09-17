@@ -17,5 +17,12 @@ export const aiCreateMessageSchema = z
   })
   .strict();
 
+export const resumeMessageSchema = z
+  .object({
+    approved: z.boolean(),
+  })
+  .strict();
+
+export type ResumeMessageInput = z.infer<typeof resumeMessageSchema>;
 export type UserCreateMessageInput = z.infer<typeof userCreateMessageSchema>;
 export type AiCreateMessageInput = z.infer<typeof aiCreateMessageSchema>;

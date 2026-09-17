@@ -60,6 +60,8 @@ Rules:
 - Describe the user's main intent
 `;
 
+const checkpointer = new MemorySaver();
+
 export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
   const tools = createSqlTools(pool);
   const modelWithTools = llm.bindTools!(tools);
@@ -118,7 +120,7 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
     .addConditionalEdges("agent", shouldContinue, ["tools", END])
     .addEdge("tools", "agent")
     .compile({
-      checkpointer: new MemorySaver(),
+      checkpointer: checkpointer,
     });
 
   const invoke = async (
@@ -180,7 +182,7 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
         configurable: {
           thread_id: conversationId,
         },
-        streamMode: ["messages"],
+        streamMode: ["messages", "updates"],
       },
     );
   };

@@ -20,10 +20,15 @@ import {
   conversationIdParamsSchema,
   createConversationSchema,
   paginationQuerySchema,
+  resumeMessageSchema,
   updateConversationSchema,
   userCreateMessageSchema,
 } from "@repo/shared/validations";
-import { createMessage, listMessages } from "./message/message.controller.js";
+import {
+  createMessage,
+  listMessages,
+  resumeMessage,
+} from "./message/message.controller.js";
 
 const router = Router();
 
@@ -49,9 +54,21 @@ router.get("/:id", validateParams(conversationIdParamsSchema), getConversation);
 
 router.post(
   "/:id/messages",
+  validateParams(conversationIdParamsSchema),
   validateBody(userCreateMessageSchema),
   createMessage,
 );
-router.get("/:id/messages", validateQuery(paginationQuerySchema), listMessages);
+router.get(
+  "/:id/messages",
+  validateParams(conversationIdParamsSchema),
+  validateQuery(paginationQuerySchema),
+  listMessages,
+);
 
+router.post(
+  "/:id/messages/resume",
+  validateParams(conversationIdParamsSchema),
+  validateBody(resumeMessageSchema),
+  resumeMessage,
+);
 export default router;
