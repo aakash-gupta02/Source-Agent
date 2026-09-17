@@ -8,6 +8,7 @@ import { ConversationTranscript } from "./conversation-transcript";
 import { useConversation } from "@/features/conversation/hooks";
 import { useMessages } from "@/features/conversation/message/hooks";
 import { messageApi } from "@/features/conversation/message/api";
+import { SqlApproval } from "@repo/shared/types";
 
 interface ConversationProps {
   conversationId: string;
@@ -25,6 +26,9 @@ export function Conversation({ conversationId }: ConversationProps) {
       status: "running" | "completed";
     }[]
   >([]);
+  const [pendingApproval, setPendingApproval] = useState<SqlApproval | null>(
+    null,
+  );
 
   const {
     data: conversation,
@@ -61,64 +65,143 @@ export function Conversation({ conversationId }: ConversationProps) {
     setPendingUserContent(content);
     setStreamingContent("");
     setToolActivity([]);
+    setPendingApproval(null);
     setIsStreaming(true);
 
+    let completed = false;
+
     try {
-      await messageApi.stream(
-        conversationId,
-        { content },
-        (event) => {
-          if (event.type === "tool_start") {
-            setToolActivity((previous) => [
-              ...previous,
-              {
-                tool: event.tool,
-                status: "running",
-              },
-            ]);
-          }
+      await messageApi.stream(conversationId, { content }, (event) => {
+        if (event.type === "tool_start") {
+          setToolActivity((previous) => [
+            ...previous,
+            {
+              tool: event.tool,
+              status: "running",
+            },
+          ]);
+        }
 
-          if (event.type === "tool_end") {
-            setToolActivity((previous) =>
-              previous.map((item, index) => {
-                if (
-                  index ===
-                    previous.findIndex(
-                      (tool) =>
-                        tool.tool === event.tool &&
-                        tool.status === "running",
-                    )
-                ) {
-                  return {
-                    ...item,
-                    status: "completed",
-                  };
-                }
+        if (event.type === "tool_end") {
+          setToolActivity((previous) =>
+            previous.map((item, index) => {
+              if (
+                index ===
+                previous.findIndex(
+                  (tool) =>
+                    tool.tool === event.tool && tool.status === "running",
+                )
+              ) {
+                return {
+                  ...item,
+                  status: "completed",
+                };
+              }
 
-                return item;
-              }),
-            );
-          }
+              return item;
+            }),
+          );
+        }
 
-          if (event.type === "message") {
-            setStreamingContent(
-              (previous) => previous + event.content,
-            );
-          }
+        if (event.type === "message") {
+          setStreamingContent((previous) => previous + event.content);
+        }
 
-          if (event.type === "error") {
-            throw new Error(event.message);
-          }
-        },
-      );
+        if (event.type === "approval_required") {
+          setPendingApproval(event.approval);
+        }
 
-      await refetch();
+        if (event.type === "done") {
+          completed = true;
+        }
 
-      setStreamingContent("");
-      setPendingUserContent("");
-      setToolActivity([]);
+        if (event.type === "error") {
+          throw new Error(event.message);
+        }
+      });
+
+      if (completed) {
+        await refetch();
+
+        setStreamingContent("");
+        setPendingUserContent("");
+        setToolActivity([]);
+      }
     } catch (error) {
       console.error("Failed to stream message:", error);
+    } finally {
+      setIsStreaming(false);
+    }
+  };
+
+  const handleApproval = async (approved: boolean) => {
+    if (!pendingApproval || isStreaming) return;
+
+    setPendingApproval(null);
+    setIsStreaming(true);
+
+    let completed = false;
+
+    try {
+      await messageApi.resume(conversationId, { approved }, (event) => {
+        if (event.type === "tool_start") {
+          setToolActivity((previous) => [
+            ...previous,
+            {
+              tool: event.tool,
+              status: "running",
+            },
+          ]);
+        }
+
+        if (event.type === "tool_end") {
+          setToolActivity((previous) =>
+            previous.map((item, index) => {
+              if (
+                index ===
+                previous.findIndex(
+                  (tool) =>
+                    tool.tool === event.tool && tool.status === "running",
+                )
+              ) {
+                return {
+                  ...item,
+                  status: "completed",
+                };
+              }
+
+              return item;
+            }),
+          );
+        }
+
+        if (event.type === "message") {
+          setStreamingContent((previous) => previous + event.content);
+        }
+
+        if (event.type === "approval_required") {
+          setPendingApproval(event.approval);
+        }
+
+        if (event.type === "done") {
+          completed = true;
+        }
+
+        if (event.type === "error") {
+          throw new Error(event.message);
+        }
+      });
+
+      if (completed) {
+        await refetch();
+
+        setStreamingContent("");
+        setPendingUserContent("");
+        setToolActivity([]);
+        setPendingApproval(null);
+      }
+    } catch (error) {
+      console.error("Failed to resume message:", error);
     } finally {
       setIsStreaming(false);
     }
@@ -127,9 +210,7 @@ export function Conversation({ conversationId }: ConversationProps) {
   if (conversationLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-muted-foreground">
-          Loading conversation...
-        </p>
+        <p className="text-sm text-muted-foreground">Loading conversation...</p>
       </div>
     );
   }
@@ -137,9 +218,7 @@ export function Conversation({ conversationId }: ConversationProps) {
   if (conversationError || !conversation) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-muted-foreground">
-          Conversation not found.
-        </p>
+        <p className="text-sm text-muted-foreground">Conversation not found.</p>
       </div>
     );
   }
@@ -158,9 +237,11 @@ export function Conversation({ conversationId }: ConversationProps) {
         streamingContent={streamingContent}
         isStreaming={isStreaming}
         toolActivity={toolActivity}
+        pendingApproval={pendingApproval}
         hasNextPage={Boolean(hasNextPage)}
         isFetchingNextPage={isFetchingNextPage}
         onLoadOlder={handleLoadOlder}
+        onApproval={handleApproval}
       />
 
       <div className="shrink-0 px-4 pb-4 pt-2">

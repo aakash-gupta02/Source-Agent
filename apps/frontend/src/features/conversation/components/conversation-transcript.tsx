@@ -20,8 +20,10 @@ import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { toolLabels } from "../message/constant";
 import {
   MessageDtoWithMetadata,
+  SqlApproval,
   ToolExecutionMetadata,
 } from "@repo/shared/types";
+import { Button } from "@/components/ui/button";
 
 interface ToolActivity {
   tool: string;
@@ -37,6 +39,8 @@ interface ConversationTranscriptProps {
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
   onLoadOlder?: () => void;
+  pendingApproval?: SqlApproval | null;
+  onApproval: (approved: boolean) => void;
 }
 
 function LoadOlderOnStart({
@@ -112,6 +116,8 @@ export function ConversationTranscript({
   isStreaming = false,
   toolActivity = [],
   hasNextPage = false,
+  pendingApproval,
+  onApproval,
   isFetchingNextPage = false,
   onLoadOlder,
 }: ConversationTranscriptProps) {
@@ -270,6 +276,35 @@ export function ConversationTranscript({
                     </MessageContent>
                   </Message>
                 </MessageScrollerItem>
+              ) : null}
+
+              {pendingApproval ? (
+                <div className="ml-1 mt-4 rounded-lg border p-4">
+                  <p className="mb-3 text-sm font-medium">
+                    This query requires your approval
+                  </p>
+
+                  <pre className="mb-4 overflow-x-auto rounded-md bg-muted p-3 text-sm">
+                    {pendingApproval.sql}
+                  </pre>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => onApproval(false)}
+                      variant="outline"
+                      disabled={isStreaming}
+                    >
+                      Reject
+                    </Button>
+
+                    <Button
+                      onClick={() => onApproval(true)}
+                      disabled={isStreaming}
+                    >
+                      Approve
+                    </Button>
+                  </div>
+                </div>
               ) : null}
             </MessageScrollerContent>
           </MessageScrollerViewport>
