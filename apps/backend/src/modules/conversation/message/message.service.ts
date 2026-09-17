@@ -14,6 +14,7 @@ import {
   MessageMetadata,
   SqlApproval,
   StreamEvent,
+  updateAssistantMessageInput,
 } from "@repo/shared/types";
 import { db } from "@repo/db/client";
 import { AuthContext } from "../../../shared/types/auth.type.js";
@@ -168,8 +169,25 @@ export const userCreateMessageService = async function* (
     pool,
   });
 
-  const stream = await agent.stream(conversationId, messages);
+  const assistantMessage = await createAssistantMessageService(
+    conversationId,
+    "",
+    {
+      model: {
+        provider: conversation.aiProvider.provider,
+        name: conversation.aiProvider.model,
+      },
+      tools: [],
+    },
+  );
 
+  const stream = await agent.stream(
+    conversationId,
+    messages,
+    assistantMessage.id,
+  );
+
+  // variables to track the assistant message content and tool executions
   let assistantContent = "";
   const toolExecutions: {
     id?: string;
@@ -259,10 +277,6 @@ export const userCreateMessageService = async function* (
     };
   }
 
-  if (interrupted) {
-    return;
-  }
-
   const metadata: MessageMetadata = {
     model: {
       provider: conversation.aiProvider.provider,
@@ -276,11 +290,17 @@ export const userCreateMessageService = async function* (
     }),
   };
 
-  await createAssistantMessageService(
-    conversationId,
-    assistantContent,
+  if (interrupted) {
+    await updateAssistantMessageService(assistantMessage.id, {
+      metadata,
+    });
+    return;
+  }
+
+  await updateAssistantMessageService(assistantMessage.id, {
+    content: assistantContent,
     metadata,
-  );
+  });
 
   yield {
     type: "done",
@@ -356,6 +376,7 @@ const createAssistantMessageService = async (
 };
 
 // TODO: abstract repeated code from userCreateMessageService
+
 // Resume an interrupted message
 export const resumeMessageService = async function* (
   payload: ResumeMessageInput,
@@ -418,20 +439,64 @@ export const resumeMessageService = async function* (
     pool,
   });
 
-  const stream = await agent.resume(conversationId, payload);
+  /*
+   * Get the assistant message ID from the graph checkpoint.
+   */
+  const state = await agent.getState(conversationId);
 
-  let assistantContent = "";
+  const assistantMessageId = state.values.assistantMessageId;
+
+  if (!assistantMessageId) {
+    throw new ApiError(
+      StatusCodes.NOT_FOUND,
+      "Assistant message not found in graph state",
+    );
+  }
+
+  /*
+   * Fetch the placeholder assistant message created
+   * during the initial user message request.
+   */
+  const assistantMessage = await Message.findUnique({
+    where: {
+      id: assistantMessageId,
+      conversationId,
+    },
+    select: {
+      content: true,
+      metadata: true,
+    },
+  });
+
+  if (!assistantMessage) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Assistant message not found");
+  }
+
+  /*
+   * Continue from the content/tools already persisted
+   * before the interruption.
+   */
+  let assistantContent = assistantMessage.content;
+
+  const existingMetadata = (assistantMessage.metadata ?? {}) as MessageMetadata;
 
   const toolExecutions: {
     id?: string;
     name: string;
     startedAt: number;
     durationMs?: number;
-  }[] = [];
+  }[] = (existingMetadata.tools ?? []).map((tool) => ({
+    name: tool.name,
+    durationMs: tool.durationMs,
+    startedAt: 0,
+  }));
 
   console.log("========== RESUME STARTED ==========");
   console.log("conversationId:", conversationId);
+  console.log("assistantMessageId:", assistantMessageId);
   console.log("payload:", payload);
+
+  const stream = await agent.resume(conversationId, payload);
 
   for await (const [mode, data] of stream) {
     console.log("========== RESUME STREAM CHUNK ==========");
@@ -512,6 +577,10 @@ export const resumeMessageService = async function* (
     };
   }
 
+  /*
+   * Update the SAME assistant message that was created
+   * during the initial request.
+   */
   const metadata: MessageMetadata = {
     model: {
       provider: conversation.aiProvider.provider,
@@ -525,13 +594,50 @@ export const resumeMessageService = async function* (
     }),
   };
 
-  await createAssistantMessageService(
-    conversationId,
-    assistantContent,
+  await updateAssistantMessageService(assistantMessageId, {
+    content: assistantContent,
     metadata,
-  );
+  });
 
   yield {
     type: "done",
   };
+};
+
+const updateAssistantMessageService = async (
+  messageId: string,
+  data: updateAssistantMessageInput,
+): Promise<MessageDto> => {
+  const message = await Message.findUnique({
+    where: {
+      id: messageId,
+    },
+    select: {
+      metadata: true,
+    },
+  });
+
+  if (!message) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Message not found");
+  }
+
+  const existingMetadata = (message.metadata ?? {}) as MessageMetadata;
+
+  const metadata: MessageMetadata = {
+    ...existingMetadata,
+    ...data.metadata,
+    ...(data.metadata?.tools && {
+      tools: [...(existingMetadata.tools ?? []), ...data.metadata.tools],
+    }),
+  };
+
+  return Message.update({
+    where: {
+      id: messageId,
+    },
+    data: {
+      content: data.content,
+      metadata: metadata as Prisma.InputJsonValue,
+    },
+  });
 };
