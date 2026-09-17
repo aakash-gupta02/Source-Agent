@@ -58,3 +58,8 @@ export interface MessageMetadata {
   model?: ModelMetadata;
   tools?: ToolExecutionMetadata[];
 }
+
+export interface updateAssistantMessageInput {
+  content?: string;
+  metadata?: MessageMetadata;
+}

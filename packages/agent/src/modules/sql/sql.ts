@@ -76,6 +76,8 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
       reducer: (_, right) => right,
       default: () => 0,
     }),
+
+    assistantMessageId: Annotation<string | undefined>(),
   });
 
   const agent = async (state: typeof State.State) => {
@@ -148,6 +150,7 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
   const stream = async (
     conversationId: string,
     messages: { role: MessageRole; content: string }[],
+    assistantMessageId?: string,
   ) => {
     const agentMessages = messages.map((message) =>
       message.role === MessageRole.USER
@@ -158,6 +161,7 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
     return graph.stream(
       {
         messages: [new SystemMessage(systemPrompt), ...agentMessages],
+        assistantMessageId,
       },
       {
         configurable: {
@@ -187,10 +191,19 @@ export const createSqlAgent = ({ llm, pool }: CreateSqlAgentInput) => {
     );
   };
 
+  const getState = async (conversationId: string) => {
+    return graph.getState({
+      configurable: {
+        thread_id: conversationId,
+      },
+    });
+  };
+
   return {
     invoke,
     stream,
     resume,
+    getState,
   };
 };
 
