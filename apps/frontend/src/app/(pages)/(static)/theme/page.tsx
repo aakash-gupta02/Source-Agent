@@ -90,7 +90,7 @@ export default function Home() {
 
         <section className="space-y-4">
           <h2 className="text-h3 font-semibold text-ink">
-            02 · Typography — Inter
+            02 · Typography - Inter
           </h2>
 
           <div className="space-y-6 rounded-xl border border-border bg-white p-6">

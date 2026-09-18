@@ -8,7 +8,7 @@ type LogoProps = {
   textClassName?: string;
 };
 
-/** Source Agent brand logo — use across auth, nav, and marketing. */
+/** Source Agent brand logo - use across auth, nav, and marketing. */
 export function Logo({
   className,
   variant = "both",

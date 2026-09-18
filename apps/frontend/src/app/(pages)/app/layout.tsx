@@ -1,41 +1,18 @@
-"use client";
+import type { ReactNode } from "react";
 
-import { useEffect, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { ThemeProvider } from "@/components/theme-provider";
 
-import { AppLayout } from "@/components/app-layout";
-import { useCurrentUser } from "@/features/auth/hooks";
-import { LOGIN_ROUTE } from "@/features/auth/routes";
+import { ProtectedAppShell } from "./protected-app-shell";
 
-export default function ProtectedAppLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const router = useRouter();
-  const { data: user, isPending } = useCurrentUser();
-
-  useEffect(() => {
-    if (!isPending && !user) {
-      router.replace(LOGIN_ROUTE);
-    }
-  }, [isPending, user, router]);
-
-  if (isPending || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="size-5 animate-spin text-gray-400" />
-        <span className="sr-only">Checking your session</span>
-      </div>
-    );
-  }
-
+export default function AppSectionLayout({ children }: { children: ReactNode }) {
   return (
-    <AppLayout user={user}>
-      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-        {children}
-      </div>
-    </AppLayout>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <ProtectedAppShell>{children}</ProtectedAppShell>
+    </ThemeProvider>
   );
 }

@@ -260,6 +260,7 @@
 
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
 }
 
@@ -280,4 +281,32 @@
   --typeset-size: 15px;
   --typeset-leading: 1.6;
   --typeset-flow: 1em;
+}
+
+.gsap-reveal-word {
+  display: inline-block;
+  transform: translateY(120%);
+  opacity: 0;
+  filter: blur(10px);
+  transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1),
+              filter 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, opacity, filter;
+}
+.gsap-reveal-word.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+  filter: blur(0);
+}
+
+.reveal-on-scroll {
+  transform: translateY(40px);
+  opacity: 0;
+  filter: blur(8px);
+  transition: transform 1s ease-out, opacity 1s ease-out, filter 1s ease-out;
+}
+.reveal-on-scroll.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+  filter: blur(0);
 }

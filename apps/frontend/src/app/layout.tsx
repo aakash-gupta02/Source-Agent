@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Source Agent",
   description:
-    "Ask questions about your data and get intelligent answers with AI.",
+    "Ask questions about your Postgres data. Source Agent inspects the schema, writes SQL, and asks before it writes.",
 };
 
 export default function RootLayout({
