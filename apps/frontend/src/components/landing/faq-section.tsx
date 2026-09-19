@@ -1,40 +1,8 @@
 import Link from "next/link";
 import { ArrowUpRight, HelpCircle } from "lucide-react";
 
+import { faqs } from "@/config/seo";
 import { REGISTER_ROUTE } from "@/features/auth/routes";
-
-const faqs = [
-  {
-    question: "How does Source Agent connect to my database?",
-    answer:
-      "Add a PostgreSQL connection string. Source Agent inspects tables, columns, primary keys, and foreign keys - then uses that schema to answer questions.",
-  },
-  {
-    question: "Which databases are supported?",
-    answer:
-      "PostgreSQL. The tools read Postgres catalogs for schema, keys, and relationships.",
-  },
-  {
-    question: "Does the model see my whole database?",
-    answer:
-      "It sees what the tools return: table lists, schemas, samples, and query results. Credentials are encrypted at rest.",
-  },
-  {
-    question: "Why does it stop on UPDATE or DELETE?",
-    answer:
-      "Write queries pause the agent. You approve or reject the SQL before it runs against your database.",
-  },
-  {
-    question: "Which models can I use?",
-    answer:
-      "Bring your own provider and key. Configure it in the studio and the agent binds tools to that model.",
-  },
-  {
-    question: "Where do I start?",
-    answer:
-      "Create an account, add a database, pick a model, and ask something your schema can actually answer.",
-  },
-];
 
 export function FAQSection() {
   return (

@@ -1,10 +1,14 @@
-import type { Metadata } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
 
+import { JsonLd } from "@/components/seo/json-ld";
 import { AppProviders } from "@/components/shared/providers";
+import { siteMetadata, siteViewport } from "@/config/seo";
 import { cn } from "@/lib/utils";
 
 import "./globals.css";
+
+export const metadata = siteMetadata;
+export const viewport = siteViewport;
 
 const inter = Inter({
   subsets: ["latin"],
@@ -15,12 +19,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-export const metadata: Metadata = {
-  title: "Source Agent",
-  description:
-    "Ask questions about your Postgres data. Source Agent inspects the schema, writes SQL, and asks before it writes.",
-};
 
 export default function RootLayout({
   children,
@@ -38,6 +36,7 @@ export default function RootLayout({
       )}
     >
       <body className="min-h-full flex flex-col">
+        <JsonLd />
         <AppProviders>{children}</AppProviders>
       </body>
     </html>
