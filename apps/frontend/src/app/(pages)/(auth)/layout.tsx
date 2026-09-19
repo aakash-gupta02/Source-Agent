@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 
 import { Logo } from "@/components/shared/logo";
+import { privatePageMetadata } from "@/config/seo";
+
+export const metadata = privatePageMetadata;
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
