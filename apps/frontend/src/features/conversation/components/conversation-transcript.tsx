@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Check, LoaderCircle } from "lucide-react";
+import { ThinkingOrb } from "thinking-orbs";
 
 import { Message, MessageContent } from "@/components/ui/message";
 import {
@@ -17,7 +18,7 @@ import {
   useMessageScrollerScrollable,
 } from "@/components/ui/message-scroller";
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
-import { toolLabels } from "../message/constant";
+import { toolLabels, toolOrbStates } from "../message/constant";
 import {
   MessageDtoWithMetadata,
   SqlApproval,
@@ -228,7 +229,7 @@ export function ConversationTranscript({
                   messageId="tool-activity"
                   className="[content-visibility:visible]"
                 >
-                  <div className="mb-4 ml-1 space-y-1 text-sm text-muted-foreground">
+                  <div className="mb-4 ml-1 space-y-2 text-sm text-muted-foreground">
                     {toolActivity.map((item, index) => {
                       const label = toolLabels[item.tool] ?? item.tool;
 
@@ -238,7 +239,11 @@ export function ConversationTranscript({
                           className="flex items-center gap-2"
                         >
                           {item.status === "running" ? (
-                            <LoaderCircle className="size-3 animate-spin" />
+                            <ThinkingOrb
+                              state={toolOrbStates[item.tool] ?? "working"}
+                              size={20}
+                              theme="auto"
+                            />
                           ) : (
                             <Check className="size-3" />
                           )}
@@ -269,7 +274,11 @@ export function ConversationTranscript({
                               </ReactMarkdown>
                             </div>
                           ) : (
-                            <span className="inline-block h-4 w-1 animate-pulse bg-foreground/70" />
+                            <ThinkingOrb
+                              state="composing"
+                              size={20}
+                              theme="auto"
+                            />
                           )}
                         </BubbleContent>
                       </Bubble>
@@ -280,9 +289,18 @@ export function ConversationTranscript({
 
               {pendingApproval ? (
                 <div className="ml-1 mt-4 rounded-lg border p-4">
-                  <p className="mb-3 text-sm font-medium">
-                    This query requires your approval
-                  </p>
+                  <div className="mb-3 flex items-center gap-2">
+                    <ThinkingOrb
+                      state="listening"
+                      size={20}
+                      theme="auto"
+                      paused
+                    />
+
+                    <p className="text-sm font-medium">
+                      This query requires your approval
+                    </p>
+                  </div>
 
                   <pre className="mb-4 overflow-x-auto rounded-md bg-muted p-3 text-sm">
                     {pendingApproval.sql}
