@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Check, LoaderCircle } from "lucide-react";
+import { Check } from "lucide-react";
 import { ThinkingOrb } from "thinking-orbs";
 
 import { Message, MessageContent } from "@/components/ui/message";
@@ -172,7 +172,6 @@ export function ConversationTranscript({
                   <MessageScrollerItem
                     key={message.id}
                     messageId={message.id}
-                    scrollAnchor={isUser}
                   >
                     {!isUser ? (
                       <ToolExecutionList tools={message.metadata?.tools} />
@@ -209,7 +208,7 @@ export function ConversationTranscript({
               })}
 
               {showPendingUser ? (
-                <MessageScrollerItem messageId="pending-user" scrollAnchor>
+                <MessageScrollerItem messageId="pending-user">
                   <Message align="end" className="mb-6">
                     <MessageContent className="max-w-[75%]">
                       <Bubble variant="muted" align="end">
