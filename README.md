@@ -1,6 +1,9 @@
 # Source Agent
 
 > Talk to your database. Let an agent handle the SQL.
+<p align="center">
+  <img width="1470" height="843" alt="Source Agent Hero" src="https://github.com/user-attachments/assets/c98fceab-e1a3-4570-a817-eeed1e7d702a" />
+</p>
 
 Source Agent is an AI-powered PostgreSQL assistant that lets you interact with your database using natural language.
 
