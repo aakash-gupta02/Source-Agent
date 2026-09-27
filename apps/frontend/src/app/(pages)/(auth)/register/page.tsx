@@ -120,7 +120,7 @@ export default function RegisterPage() {
         <Button
           type="submit"
           size="lg"
-          className="h-11 w-full rounded-xl text-body-emphasis font-semibold"
+          className="h-11 w-full rounded-xl text-body-emphasis font-semibold text-primary-foreground"
           disabled={isSubmitting}
         >
           {isSubmitting ? (

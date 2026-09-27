@@ -6,12 +6,16 @@ import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { FAQSection } from "@/components/landing/faq-section";
 import { CTASection } from "@/components/landing/cta-section";
 import { Footer } from "@/components/landing/footer";
+import { ForceLightTheme } from "@/components/force-light-theme";
+import GradientHero from "@/components/landing/gradient-hero";
 
 export default function HomePage() {
   return (
     <main className="relative overflow-hidden">
+      <ForceLightTheme />
       <Header />
-      <GradientGridHero />
+      {/* <GradientGridHero /> */}
+      <GradientHero />
       <TrustedMarquee />
       <FeaturesSection />
       <HowItWorksSection />
