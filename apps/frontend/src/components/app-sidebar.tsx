@@ -31,6 +31,7 @@ import {
   SidebarMenuItem,
   SidebarMenuSkeleton,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useConversations } from "@/features/conversation/hooks";
 import {
@@ -65,6 +66,11 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const pathname = usePathname();
   const conversations = useConversations();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const closeMobileSidebar = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -81,6 +87,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                     render={<Link href={item.href} />}
                     tooltip={item.title}
                     isActive={pathname === item.href}
+                    onClick={closeMobileSidebar}
                   >
                     <item.icon />
                     <span>{item.title}</span>
@@ -132,6 +139,7 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
                           render={<Link href={href} />}
                           isActive={pathname === href}
                           tooltip={conversation.title ?? "New conversation"}
+                          onClick={closeMobileSidebar}
                         >
                           <MessageSquareIcon />
                           <span>
