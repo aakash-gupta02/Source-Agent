@@ -1,35 +1,19 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Check } from "lucide-react";
-import { ThinkingOrb } from "thinking-orbs";
 
-import { Message, MessageContent } from "@/components/ui/message";
 import {
   MessageScroller,
   MessageScrollerButton,
   MessageScrollerContent,
-  MessageScrollerItem,
   MessageScrollerProvider,
   MessageScrollerViewport,
   useMessageScroller,
   useMessageScrollerScrollable,
 } from "@/components/ui/message-scroller";
-import { Bubble, BubbleContent } from "@/components/ui/bubble";
-import { toolLabels, toolOrbStates } from "../message/constant";
-import {
-  MessageDtoWithMetadata,
-  SqlApproval,
-  ToolExecutionMetadata,
-} from "@repo/shared/types";
-import { Button } from "@/components/ui/button";
-
-interface ToolActivity {
-  tool: string;
-  status: "running" | "completed";
-}
+import { MessageDtoWithMetadata, SqlApproval } from "@repo/shared/types";
+import type { ToolActivity } from "../types";
+import { RobotMessageList } from "./robot-message-list";
 
 interface ConversationTranscriptProps {
   messages: MessageDtoWithMetadata[];
@@ -90,26 +74,6 @@ function FollowBottomOnUpdate({
   return null;
 }
 
-function ToolExecutionList({ tools }: { tools?: ToolExecutionMetadata[] }) {
-  if (!tools?.length) return null;
-
-  return (
-    <div className="mb-4 ml-1 space-y-1 text-sm text-muted-foreground">
-      {tools.map((tool, index) => {
-        const label = toolLabels[tool.name] ?? tool.name;
-
-        return (
-          <p key={`${tool.name}-${index}`} className="flex items-center gap-2">
-            <Check className="size-3" />
-
-            <span>{label}</span>
-          </p>
-        );
-      })}
-    </div>
-  );
-}
-
 export function ConversationTranscript({
   messages,
   pendingUserContent,
@@ -165,164 +129,17 @@ export function ConversationTranscript({
 
           <MessageScrollerViewport>
             <MessageScrollerContent className="mx-auto w-full max-w-4xl px-4 py-6">
-              {messages.map((message) => {
-                const isUser = message.role === "USER";
-
-                return (
-                  <MessageScrollerItem
-                    key={message.id}
-                    messageId={message.id}
-                  >
-                    {!isUser ? (
-                      <ToolExecutionList tools={message.metadata?.tools} />
-                    ) : null}
-
-                    <Message align={isUser ? "end" : "start"} className="mb-6">
-                      <MessageContent
-                        className={
-                          isUser ? "max-w-[75%]" : "max-w-[min(100%,42rem)]"
-                        }
-                      >
-                        <Bubble
-                          variant={isUser ? "muted" : "ghost"}
-                          align={isUser ? "end" : "start"}
-                        >
-                          <BubbleContent>
-                            {isUser ? (
-                              <p className="whitespace-pre-wrap">
-                                {message.content}
-                              </p>
-                            ) : (
-                              <div className="typeset typeset-chat">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                  {message.content}
-                                </ReactMarkdown>
-                              </div>
-                            )}
-                          </BubbleContent>
-                        </Bubble>
-                      </MessageContent>
-                    </Message>
-                  </MessageScrollerItem>
-                );
-              })}
-
-              {showPendingUser ? (
-                <MessageScrollerItem messageId="pending-user">
-                  <Message align="end" className="mb-6">
-                    <MessageContent className="max-w-[75%]">
-                      <Bubble variant="muted" align="end">
-                        <BubbleContent>
-                          <p className="whitespace-pre-wrap">
-                            {pendingUserContent}
-                          </p>
-                        </BubbleContent>
-                      </Bubble>
-                    </MessageContent>
-                  </Message>
-                </MessageScrollerItem>
-              ) : null}
-
-              {toolActivity.length > 0 ? (
-                <MessageScrollerItem
-                  messageId="tool-activity"
-                  className="[content-visibility:visible]"
-                >
-                  <div className="mb-4 ml-1 space-y-2 text-sm text-muted-foreground">
-                    {toolActivity.map((item, index) => {
-                      const label = toolLabels[item.tool] ?? item.tool;
-
-                      return (
-                        <p
-                          key={`${item.tool}-${index}`}
-                          className="flex items-center gap-2"
-                        >
-                          {item.status === "running" ? (
-                            <ThinkingOrb
-                              state={toolOrbStates[item.tool] ?? "working"}
-                              size={20}
-                              theme="auto"
-                            />
-                          ) : (
-                            <Check className="size-3" />
-                          )}
-
-                          <span>
-                            {item.status === "running" ? `${label}...` : label}
-                          </span>
-                        </p>
-                      );
-                    })}
-                  </div>
-                </MessageScrollerItem>
-              ) : null}
-
-              {showStreaming ? (
-                <MessageScrollerItem
-                  messageId="streaming"
-                  className="[content-visibility:visible]"
-                >
-                  <Message align="start" className="mb-6">
-                    <MessageContent className="max-w-[min(100%,42rem)]">
-                      <Bubble variant="ghost" align="start">
-                        <BubbleContent>
-                          {streamingContent ? (
-                            <div className="typeset typeset-chat">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {streamingContent}
-                              </ReactMarkdown>
-                            </div>
-                          ) : (
-                            <ThinkingOrb
-                              state="composing"
-                              size={20}
-                              theme="auto"
-                            />
-                          )}
-                        </BubbleContent>
-                      </Bubble>
-                    </MessageContent>
-                  </Message>
-                </MessageScrollerItem>
-              ) : null}
-
-              {pendingApproval ? (
-                <div className="ml-1 mt-4 rounded-lg border p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <ThinkingOrb
-                      state="listening"
-                      size={20}
-                      theme="auto"
-                      paused
-                    />
-
-                    <p className="text-sm font-medium">
-                      This query requires your approval
-                    </p>
-                  </div>
-
-                  <pre className="mb-4 overflow-x-auto rounded-md bg-muted p-3 text-sm">
-                    {pendingApproval.sql}
-                  </pre>
-
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => onApproval(false)}
-                      variant="outline"
-                      disabled={isStreaming}
-                    >
-                      Reject
-                    </Button>
-
-                    <Button
-                      onClick={() => onApproval(true)}
-                      disabled={isStreaming}
-                    >
-                      Approve
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
+              <RobotMessageList
+                messages={messages}
+                pendingUserContent={pendingUserContent}
+                streamingContent={streamingContent}
+                isStreaming={isStreaming}
+                toolActivity={toolActivity}
+                pendingApproval={pendingApproval}
+                showPendingUser={showPendingUser}
+                showStreaming={showStreaming}
+                onApproval={onApproval}
+              />
             </MessageScrollerContent>
           </MessageScrollerViewport>
 
