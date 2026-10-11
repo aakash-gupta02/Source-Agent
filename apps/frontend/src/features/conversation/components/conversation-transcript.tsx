@@ -12,7 +12,9 @@ import {
   useMessageScrollerScrollable,
 } from "@/components/ui/message-scroller";
 import { MessageDtoWithMetadata, SqlApproval } from "@repo/shared/types";
-import type { ToolActivity } from "../types";
+import { useAssistantInterface } from "@/features/user-preferences/assistant-interface";
+import type { ConversationMessageListProps, ToolActivity } from "../types";
+import { OrbMessageList } from "./orb-message-list";
 import { RobotMessageList } from "./robot-message-list";
 
 interface ConversationTranscriptProps {
@@ -86,6 +88,8 @@ export function ConversationTranscript({
   isFetchingNextPage = false,
   onLoadOlder,
 }: ConversationTranscriptProps) {
+  const assistantInterface = useAssistantInterface();
+
   const showPendingUser =
     Boolean(pendingUserContent) &&
     !messages.some(
@@ -104,6 +108,18 @@ export function ConversationTranscript({
       streamingContent &&
       lastAssistant.content === streamingContent
     );
+
+  const messageListProps: ConversationMessageListProps = {
+    messages,
+    pendingUserContent,
+    streamingContent,
+    isStreaming,
+    toolActivity,
+    pendingApproval,
+    showPendingUser,
+    showStreaming,
+    onApproval,
+  };
 
   return (
     <div className="min-h-0 flex-1 overflow-hidden">
@@ -129,17 +145,11 @@ export function ConversationTranscript({
 
           <MessageScrollerViewport>
             <MessageScrollerContent className="mx-auto w-full max-w-4xl px-4 py-6">
-              <RobotMessageList
-                messages={messages}
-                pendingUserContent={pendingUserContent}
-                streamingContent={streamingContent}
-                isStreaming={isStreaming}
-                toolActivity={toolActivity}
-                pendingApproval={pendingApproval}
-                showPendingUser={showPendingUser}
-                showStreaming={showStreaming}
-                onApproval={onApproval}
-              />
+              {assistantInterface === "robot" ? (
+                <RobotMessageList {...messageListProps} />
+              ) : (
+                <OrbMessageList {...messageListProps} />
+              )}
             </MessageScrollerContent>
           </MessageScrollerViewport>
 

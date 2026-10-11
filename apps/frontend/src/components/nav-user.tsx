@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthUserDto } from "@repo/shared/types";
 import {
   ChevronsUpDownIcon,
   LogOutIcon,
   MoonIcon,
+  SettingsIcon,
   SunIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -28,6 +30,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useLogout } from "@/features/auth/hooks";
 import { LOGIN_ROUTE } from "@/features/auth/routes";
+import { UserSettingsDialog } from "@/features/user-preferences/components/user-settings-dialog";
 import { toast } from "@/lib/toast";
 
 export function NavUser({ user }: { user: AuthUserDto }) {
@@ -38,6 +41,7 @@ export function NavUser({ user }: { user: AuthUserDto }) {
   const initials = label.slice(0, 2).toUpperCase();
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const handleLogout = () => {
     logout.mutate(undefined, {
@@ -89,6 +93,10 @@ export function NavUser({ user }: { user: AuthUserDto }) {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+              <SettingsIcon />
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setTheme(isDark ? "light" : "dark")}
             >
@@ -104,6 +112,11 @@ export function NavUser({ user }: { user: AuthUserDto }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <UserSettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+        />
       </SidebarMenuItem>
     </SidebarMenu>
   );
