@@ -9,6 +9,8 @@ import { useConversation } from "@/features/conversation/hooks";
 import { useMessages } from "@/features/conversation/message/hooks";
 import { messageApi } from "@/features/conversation/message/api";
 import { SqlApproval } from "@repo/shared/types";
+import { Button } from "@/components/ui/button";
+import { env } from "@/config/env";
 
 interface ConversationProps {
   conversationId: string;
@@ -207,6 +209,135 @@ export function Conversation({ conversationId }: ConversationProps) {
     }
   };
 
+  const handleOrbDemo = async () => {
+    if (isStreaming) return;
+
+    const sleep = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+
+    setIsStreaming(true);
+    setPendingUserContent("Show me the top 5 users by activity.");
+    setStreamingContent("");
+    setToolActivity([]);
+    setPendingApproval(null);
+
+    // ─────────────────────────────────────
+    // 1. Agent starts thinking
+    // ─────────────────────────────────────
+
+    await sleep(1800);
+
+    // ─────────────────────────────────────
+    // 2. Inspect tables
+    // ─────────────────────────────────────
+
+    setToolActivity([
+      {
+        tool: "get_tables",
+        status: "running",
+      },
+    ]);
+
+    await sleep(2200);
+
+    setToolActivity([
+      {
+        tool: "get_tables",
+        status: "completed",
+      },
+    ]);
+
+    // ─────────────────────────────────────
+    // 3. Inspect users table
+    // ─────────────────────────────────────
+
+    setToolActivity((previous) => [
+      ...previous,
+      {
+        tool: "get_table_schema",
+        status: "running",
+      },
+    ]);
+
+    await sleep(2400);
+
+    setToolActivity((previous) =>
+      previous.map((item) =>
+        item.tool === "get_table_schema"
+          ? { ...item, status: "completed" }
+          : item,
+      ),
+    );
+
+    // ─────────────────────────────────────
+    // 4. Get sample data
+    // ─────────────────────────────────────
+
+    setToolActivity((previous) => [
+      ...previous,
+      {
+        tool: "get_table_sample",
+        status: "running",
+      },
+    ]);
+
+    await sleep(2000);
+
+    setToolActivity((previous) =>
+      previous.map((item) =>
+        item.tool === "get_table_sample"
+          ? { ...item, status: "completed" }
+          : item,
+      ),
+    );
+
+    // ─────────────────────────────────────
+    // 5. Generate SQL
+    // ─────────────────────────────────────
+
+    await sleep(1500);
+
+    // ─────────────────────────────────────
+    // 6. HITL — pretend the agent wants
+    //    to perform a write
+    // ─────────────────────────────────────
+
+    setToolActivity((previous) => [
+      ...previous,
+      {
+        tool: "execute_sql",
+        status: "running",
+      },
+    ]);
+
+    await sleep(1800);
+
+    setToolActivity((previous) =>
+      previous.map((item) =>
+        item.tool === "execute_sql" ? { ...item, status: "completed" } : item,
+      ),
+    );
+
+    await sleep(1000);
+
+    setPendingApproval({
+      type: "sql_approval",
+      sql: `UPDATE users
+  SET last_activity_checked_at = NOW()
+  WHERE id IN (
+    SELECT id
+    FROM users
+    ORDER BY activity_count DESC
+    LIMIT 5
+  );`,
+    });
+
+    // Stop here so you can actually see
+    // the "listening" state and approval UI.
+    //
+    // Don't automatically continue.
+  };
+
   if (conversationLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -230,7 +361,17 @@ export function Conversation({ conversationId }: ConversationProps) {
           {conversation.title || "New conversation"}
         </h1>
       </header>
-
+      
+      {env.isDev && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void handleOrbDemo()}
+          disabled={isStreaming}
+        >
+          Demo Agent
+        </Button>
+      )}
       <ConversationTranscript
         messages={messages}
         pendingUserContent={pendingUserContent}
@@ -243,7 +384,6 @@ export function Conversation({ conversationId }: ConversationProps) {
         onLoadOlder={handleLoadOlder}
         onApproval={handleApproval}
       />
-
       <div className="shrink-0 px-4 pb-4 pt-2">
         <div className="mx-auto w-full max-w-4xl">
           <ConversationComposer
